@@ -3,7 +3,6 @@ package com.tvolodi.embeserver
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
@@ -12,19 +11,18 @@ import android.os.Looper
 import android.os.Message
 import android.os.Process
 import android.widget.Toast
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
-import io.ktor.server.application.call
-import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.response.respond
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
+import io.ktor.server.netty.NettyApplicationEngine
+import java.lang.Exception
+import java.net.InetSocketAddress
 
 private const val name = "SPYSERVICE_KEY"
 private const val key = "SPYSERVICE_STATE"
+
+private var ktorServer : NettyApplicationEngine? = null
+private var commandName : String? = ""
 
 /**
  * Get service state from shared preferences
@@ -84,6 +82,8 @@ class DriverService : Service() {
      */
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
+        commandName = intent.action
+
         if(intent.action == ActionType.START.name){
             // Update service state
             setServiceState(this, ServiceStateType.STARTED)
@@ -116,6 +116,8 @@ class DriverService : Service() {
                 stopForeground(true)
             }
 
+            ktorServer?.stop(100)
+
             return START_NOT_STICKY
         }
     }
@@ -133,15 +135,38 @@ class DriverService : Service() {
     private inner class ServiceHandler (looper: Looper): Handler(looper) {
 
         override fun handleMessage(msg: Message) {
-            embeddedServer(Netty, port=8080, host = "0.0.0.0", module = Application::module)
-            //{
-//                routing {
-//                    get("/") {
-//                        call.respond(mapOf("message" to "Hello world"))
-//                    }
-//                }
-        //    }
-        .start(wait = true)
+
+//            var socketAddress = InetSocketAddress("127.0.0.1", 38301)
+//            var webSocketServer = WSServer(socketAddress)
+//            webSocketServer.start()
+
+
+//            val ktorTh = Thread {
+//
+//
+//            }
+//            ktorTh.start()
+
+            ktorServer = embeddedServer(Netty, port=8080, host = "0.0.0.0", module = Application::module).start(wait = false)
+
+            var webSocketServer : WSServer? = null
+            try{
+
+                var socketAddress = InetSocketAddress("127.0.0.1", 38301)
+                webSocketServer = WSServer(socketAddress)
+                webSocketServer.start()
+
+            } catch (e : Exception) {
+                System.out.println(e.stackTrace)
+            } finally {
+                System.out.println(webSocketServer.toString())
+            }
+
+
+//            if(commandName == ActionType.START.name)
+//
+//            else
+//                ktorServer?.stop(1000)
         }
     }
 
