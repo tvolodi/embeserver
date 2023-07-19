@@ -2,20 +2,18 @@ package com.tvolodi.embeserver
 
 // import org.java_websocket.drafts.Draft_10;
 
-import android.R
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
-import android.view.View
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
-import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
+import com.pda.rfid.uhf.UHFReader
+import com.port.Adapt
 import com.tvolodi.embeserver.databinding.ActivityMainBinding
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.drafts.Draft
@@ -23,8 +21,9 @@ import org.java_websocket.handshake.ServerHandshake
 import java.net.URI
 import java.net.URISyntaxException
 
-
 class MainActivity : AppCompatActivity() {
+
+    private val REQUEST_READ_PHONE_STATE = 1
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
@@ -58,6 +57,25 @@ class MainActivity : AppCompatActivity() {
         binding.testWSBtn.setOnClickListener { view ->
             doTestWSAction()
         }
+
+        checkPermission()
+    }
+
+    private fun checkPermission() {
+        val statePermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
+        if(statePermission != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this,
+                arrayOf<String>(Manifest.permission.READ_PHONE_STATE),
+                REQUEST_READ_PHONE_STATE)
+        } else {
+            initView()
+        }
+    }
+
+    private fun initView() {
+        Adapt.init(this)
+        Adapt.enablePauseInBackGround(this)
+
     }
 
     private fun doTestWSAction() {
@@ -117,6 +135,18 @@ class MainActivity : AppCompatActivity() {
 
 
     }
+
+    // Copied from example. Seems it is not used in this class but used in Activity which is used in the example. Delete?
+//    override fun onRequestPermissionsResult(
+//        requestCode: Int,
+//        permissions: Array<String?>?,
+//        grantResults: IntArray?
+//    ) {
+//        if (requestCode == REQUEST_READ_PHONE_STATE) {
+//            initView()
+//        }
+//        super.onRequestPermissionsResult(requestCode, permissions!!, grantResults!!)
+//    }
 }
 
 class EmptyClient : WebSocketClient {
@@ -142,4 +172,6 @@ class EmptyClient : WebSocketClient {
     override fun onError(ex: Exception) {
         System.err.println("an error occurred:$ex")
     }
+
+
 }

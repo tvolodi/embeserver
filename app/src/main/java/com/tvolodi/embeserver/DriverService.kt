@@ -10,12 +10,14 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Process
+import android.util.Log
 import android.widget.Toast
+import com.pda.rfid.IAsynchronousMessage
+import com.pda.rfid.uhf.UHFReader
 import io.ktor.server.application.Application
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.netty.NettyApplicationEngine
-import java.lang.Exception
 import java.net.InetSocketAddress
 
 private const val name = "SPYSERVICE_KEY"
@@ -52,6 +54,10 @@ class DriverService : Service() {
 
     private var serviceLooper: Looper? = null
     private var serviceHandler: ServiceHandler? = null;
+
+    var UhfReaderInstance = UHFReader.getUHFInstance()
+
+    var _UHFSTATE: Boolean = false
 
     /**
      * Use when service is binding service. We don't use it so return null - no binding.
@@ -136,17 +142,6 @@ class DriverService : Service() {
 
         override fun handleMessage(msg: Message) {
 
-//            var socketAddress = InetSocketAddress("127.0.0.1", 38301)
-//            var webSocketServer = WSServer(socketAddress)
-//            webSocketServer.start()
-
-
-//            val ktorTh = Thread {
-//
-//
-//            }
-//            ktorTh.start()
-
             ktorServer = embeddedServer(Netty, port=8080, host = "0.0.0.0", module = Application::module).start(wait = false)
 
             var webSocketServer : WSServer? = null
@@ -167,6 +162,32 @@ class DriverService : Service() {
 //
 //            else
 //                ktorServer?.stop(1000)
+        }
+
+        fun UHF_Init(log: IAsynchronousMessage?): Boolean? {
+            var rt = false
+            try {
+                if (_UHFSTATE == false) {
+                    val ret = UHFReader.getUHFInstance().OpenConnect(log)
+                    if (ret) {
+                        rt = true
+                        _UHFSTATE = true
+                    }
+                    Thread.sleep(500)
+                } else {
+                    rt = true
+                }
+            } catch (ex: Exception) {
+                Log.d("debug", "On the UHF electric abnormal:" + ex.message)
+            }
+            return rt
+        }
+
+        fun UHF_Dispose() {
+            if (_UHFSTATE == true) {
+                UHFReader._Config.CloseConnect()
+                _UHFSTATE = false
+            }
         }
     }
 
