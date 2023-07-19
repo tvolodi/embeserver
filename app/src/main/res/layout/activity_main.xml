@@ -12,10 +12,13 @@
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize" />
+        <EditText
+            android:id="@+id/editTextText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:inputType="text"
+            android:text="Start" />
 
         <ImageButton
             android:id="@+id/startDriverBtn"
@@ -23,14 +26,34 @@
             android:layout_height="wrap_content"
             app:srcCompat="@android:drawable/ic_input_add" />
 
+        <EditText
+            android:id="@+id/editTextText2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:inputType="text"
+            android:text="Stop" />
+
         <ImageButton
             android:id="@+id/stopDriverBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:srcCompat="@android:drawable/ic_delete" />
 
-    </com.google.android.material.appbar.AppBarLayout>
+        <EditText
+            android:id="@+id/editTextText3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:inputType="text"
+            android:text="Name" />
 
-    <include layout="@layout/content_main" />
+        <Button
+            android:id="@+id/testWSBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test WS" />
+
+    </com.google.android.material.appbar.AppBarLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
