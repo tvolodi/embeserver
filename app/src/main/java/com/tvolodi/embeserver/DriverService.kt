@@ -12,8 +12,8 @@ import android.os.Message
 import android.os.Process
 import android.util.Log
 import android.widget.Toast
-import com.pda.rfid.IAsynchronousMessage
 import com.pda.rfid.uhf.UHFReader
+
 import io.ktor.server.application.Application
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
@@ -55,9 +55,9 @@ class DriverService : Service() {
     private var serviceLooper: Looper? = null
     private var serviceHandler: ServiceHandler? = null;
 
-    var UhfReaderInstance = UHFReader.getUHFInstance()
+    var serviceContext = this
 
-    var _UHFSTATE: Boolean = false
+    lateinit var hopelandReader: HopelandRfidReader
 
     /**
      * Use when service is binding service. We don't use it so return null - no binding.
@@ -73,14 +73,27 @@ class DriverService : Service() {
     override fun onCreate(){
         super.onCreate()
 
-        HandlerThread("KtorProcess", Process.THREAD_PRIORITY_BACKGROUND).apply {
-            start()
+//        Toast.makeText(serviceContext, "Service on create", Toast.LENGTH_LONG).show()
 
-            serviceLooper = looper
+        try {
+            var ht = HandlerThread("KtorProcess", Process.THREAD_PRIORITY_BACKGROUND).apply {
+                try{
+                    start()
+                } catch (e: Exception){
+                    Log.d("ERROR", e.stackTrace.toString())
+                }
 
-            // Prepare service handler for KTor
-            serviceHandler = ServiceHandler(looper)
+
+                serviceLooper = looper
+
+                // Prepare service handler for KTor
+                serviceHandler = ServiceHandler(looper, serviceContext)
+            }
+        } catch (e: Exception) {
+            Log.d("ERROR", e.stackTrace.toString())
         }
+
+
     }
 
     /**
@@ -93,9 +106,6 @@ class DriverService : Service() {
         if(intent.action == ActionType.START.name){
             // Update service state
             setServiceState(this, ServiceStateType.STARTED)
-
-            // Inform user with a toast
-            Toast.makeText(this, "Ktor service starting", Toast.LENGTH_SHORT).show()
 
             // Create message for handler and run KTor
             serviceHandler?.obtainMessage()?.also { msg ->
@@ -113,7 +123,7 @@ class DriverService : Service() {
             setServiceState(this, ServiceStateType.STOPPED)
 
             // Inform user on stop
-            Toast.makeText(this, "Ktor service stopping", Toast.LENGTH_SHORT).show()
+            // Toast.makeText(this, "Ktor service stopping", Toast.LENGTH_SHORT).show()
 
             // If 33 and greater then we have to use const
             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
@@ -122,7 +132,9 @@ class DriverService : Service() {
                 stopForeground(true)
             }
 
-            ktorServer?.stop(100)
+            // ktorServer?.stop(100)
+
+            UHFReader._Config.CloseConnect()
 
             return START_NOT_STICKY
         }
@@ -138,25 +150,32 @@ class DriverService : Service() {
     }
 
     //
-    private inner class ServiceHandler (looper: Looper): Handler(looper) {
+    private inner class ServiceHandler (looper: Looper, val context: Context): Handler(looper) {
 
         override fun handleMessage(msg: Message) {
 
-            ktorServer = embeddedServer(Netty, port=8080, host = "0.0.0.0", module = Application::module).start(wait = false)
+//            Toast.makeText(context, "Ktor service starting", Toast.LENGTH_SHORT).show()
+//
+//            ktorServer = embeddedServer(Netty, port=8080, host = "0.0.0.0", module = Application::module).start(wait = false)
+//            Toast.makeText(context, "Ktor service started", Toast.LENGTH_SHORT).show()
 
-            var webSocketServer : WSServer? = null
-            try{
+//            Toast.makeText(context, "WS Service starting", Toast.LENGTH_SHORT).show()
+//            var webSocketServer : WSServer? = null
+//            try{
+//
+//                var socketAddress = InetSocketAddress("127.0.0.1", 38301)
+//                webSocketServer = WSServer(socketAddress, context)
+//                webSocketServer.start()
+//
+//                Toast.makeText(context, "WS Service started", Toast.LENGTH_SHORT).show()
+//
+//            } catch (e : Exception) {
+//                System.out.println(e.stackTrace)
+//            } finally {
+//                System.out.println(webSocketServer.toString())
+//            }
 
-                var socketAddress = InetSocketAddress("127.0.0.1", 38301)
-                webSocketServer = WSServer(socketAddress)
-                webSocketServer.start()
-
-            } catch (e : Exception) {
-                System.out.println(e.stackTrace)
-            } finally {
-                System.out.println(webSocketServer.toString())
-            }
-
+            var hopelandReader = HopelandRfidReader(context)
 
 //            if(commandName == ActionType.START.name)
 //
@@ -164,31 +183,6 @@ class DriverService : Service() {
 //                ktorServer?.stop(1000)
         }
 
-        fun UHF_Init(log: IAsynchronousMessage?): Boolean? {
-            var rt = false
-            try {
-                if (_UHFSTATE == false) {
-                    val ret = UHFReader.getUHFInstance().OpenConnect(log)
-                    if (ret) {
-                        rt = true
-                        _UHFSTATE = true
-                    }
-                    Thread.sleep(500)
-                } else {
-                    rt = true
-                }
-            } catch (ex: Exception) {
-                Log.d("debug", "On the UHF electric abnormal:" + ex.message)
-            }
-            return rt
-        }
-
-        fun UHF_Dispose() {
-            if (_UHFSTATE == true) {
-                UHFReader._Config.CloseConnect()
-                _UHFSTATE = false
-            }
-        }
     }
 
     private fun startService() {

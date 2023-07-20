@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
@@ -29,6 +30,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
     private var mWebSocketClient: WebSocketClient? = null
+
+    val activityContext = this
 
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -58,6 +61,8 @@ class MainActivity : AppCompatActivity() {
             doTestWSAction()
         }
 
+        binding.serviceStateText.setText( "Service state: ${getServiceState(this)}")
+
         checkPermission()
     }
 
@@ -73,8 +78,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initView() {
-        Adapt.init(this)
-        Adapt.enablePauseInBackGround(this)
+//        Adapt.init(this)
+//        Adapt.enablePauseInBackGround(this)
 
     }
 
@@ -88,6 +93,8 @@ class MainActivity : AppCompatActivity() {
             && action == ActionType.STOP) return
         if (currentState == ServiceStateType.STARTED
             && action == ActionType.START) return
+
+
 
         Intent(this, DriverService::class.java).also {
             it.action = action.name
@@ -106,7 +113,7 @@ class MainActivity : AppCompatActivity() {
         }
         mWebSocketClient = object : WebSocketClient(uri) {
             override fun onOpen(serverHandshake: ServerHandshake) {
-                Log.i("Websocket", "Opened")
+                Toast.makeText(activityContext, "WS Opened", Toast.LENGTH_SHORT).show()
                 mWebSocketClient!!.send("Hello from " + Build.MANUFACTURER + " " + Build.MODEL)
             }
 
@@ -130,7 +137,7 @@ class MainActivity : AppCompatActivity() {
             mWebSocketClient?.connect()
 
         } catch (e: Exception){
-            System.out.println(e.stackTrace)
+            Toast.makeText(activityContext, "${e.stackTrace.toString()}", Toast.LENGTH_LONG).show()
         }
 
 

@@ -13,6 +13,14 @@
         android:fitsSystemWindows="true">
 
         <EditText
+            android:id="@+id/serviceStateText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:inputType="text"
+            android:text="Service state:" />
+
+        <EditText
             android:id="@+id/editTextText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

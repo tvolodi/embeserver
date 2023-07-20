@@ -7,12 +7,13 @@ plugins {
 android {
 
     namespace 'com.tvolodi.embeserver'
-    compileSdk 34
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.tvolodi.embeserver"
         minSdk 27
-        targetSdk 34
+        //noinspection ExpiredTargetSdkVersion
+        targetSdk 27
         versionCode 1
         versionName "1.0"
 
@@ -55,10 +56,11 @@ dependencies {
     implementation "io.ktor:ktor-server-content-negotiation:2.3.1"
     implementation "io.ktor:ktor-serialization-kotlinx-json:2.3.1"
     implementation "io.ktor:ktor-features:1.6.8"
-    implementation 'androidx.core:core-ktx:+'
-    implementation 'androidx.core:core-ktx:+'
-    implementation 'androidx.core:core-ktx:+'
+    implementation 'androidx.core:core-ktx:1.10.1'
+//    implementation 'androidx.core:core-ktx:+'
+//    implementation 'androidx.core:core-ktx:+'
     implementation 'org.java-websocket:Java-WebSocket:1.5.3'
+//    implementation 'androidx.core:core-ktx:+'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
