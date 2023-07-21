@@ -62,6 +62,12 @@
             android:layout_height="wrap_content"
             android:text="Test WS" />
 
+        <Button
+            android:id="@+id/startWSBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Start WS Server" />
+
     </com.google.android.material.appbar.AppBarLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

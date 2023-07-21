@@ -12,17 +12,28 @@ import java.lang.Exception
 
 class WSServer(socketAddress: InetSocketAddress, val context: Context ) : WebSocketServer(socketAddress) {
 
+    var clientHandshake: ClientHandshake? = null
+
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
-        // Some actions
+        clientHandshake = handshake
     }
 
     override fun onClose(conn: WebSocket?, code: Int, reason: String?, remote: Boolean) {
         // Some actions
     }
 
+    /**
+     * Message format:
+     * operation_name;
+     * continuous_read_tag
+     */
     override fun onMessage(conn: WebSocket?, message: String?) {
-        var recMsg = "Server got message: " + message
-        Toast.makeText(context, "WS Service got message" + message, Toast.LENGTH_LONG).show()
+
+        var parsedMessage = message?.split(";")
+        var operationName = parsedMessage?.get(0)
+        when (operationName) {
+            "test" -> conn?.send("Test passed")
+        }
     }
 
     override fun onError(conn: WebSocket?, ex: Exception?) {

@@ -57,7 +57,7 @@ class DriverService : Service() {
 
     var serviceContext = this
 
-    lateinit var hopelandReader: HopelandRfidReader
+    var hopelandReader: HopelandRfidReader = HopelandRfidReader(this)
 
     /**
      * Use when service is binding service. We don't use it so return null - no binding.
@@ -102,25 +102,25 @@ class DriverService : Service() {
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
         commandName = intent.action
+        // var mainActivity = intent.component as MainActivity
 
         if(intent.action == ActionType.START.name){
-            // Update service state
-            setServiceState(this, ServiceStateType.STARTED)
 
             // Create message for handler and run KTor
             serviceHandler?.obtainMessage()?.also { msg ->
                 msg.arg1 = startId
 
-                // Run KTor
                 serviceHandler?.sendMessage(msg)
             }
 
+            // Update service state
+            setServiceState(this, ServiceStateType.STARTED)
+//            mainActivity.setServiceStateText("Started")
             // Inform OS to restart service at once
             return  START_STICKY
         } else
         {
-            // Update service state
-            setServiceState(this, ServiceStateType.STOPPED)
+
 
             // Inform user on stop
             // Toast.makeText(this, "Ktor service stopping", Toast.LENGTH_SHORT).show()
@@ -134,7 +134,14 @@ class DriverService : Service() {
 
             // ktorServer?.stop(100)
 
-            UHFReader._Config.CloseConnect()
+            //
+            // hopelandReader.uhfReader.CloseConnect()
+            hopelandReader.deviceDisconnect()
+
+            // Update service state
+            setServiceState(this, ServiceStateType.STOPPED)
+
+            // mainActivity.setServiceStateText("Stopped")
 
             return START_NOT_STICKY
         }
@@ -175,7 +182,7 @@ class DriverService : Service() {
 //                System.out.println(webSocketServer.toString())
 //            }
 
-            var hopelandReader = HopelandRfidReader(context)
+            hopelandReader.deviceConnect(null)
 
 //            if(commandName == ActionType.START.name)
 //

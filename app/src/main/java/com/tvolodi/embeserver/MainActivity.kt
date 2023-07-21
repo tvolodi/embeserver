@@ -5,6 +5,7 @@ package com.tvolodi.embeserver
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -19,15 +20,17 @@ import com.tvolodi.embeserver.databinding.ActivityMainBinding
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.drafts.Draft
 import org.java_websocket.handshake.ServerHandshake
+import java.net.InetSocketAddress
 import java.net.URI
 import java.net.URISyntaxException
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
     private val REQUEST_READ_PHONE_STATE = 1
 
     private lateinit var appBarConfiguration: AppBarConfiguration
-    private lateinit var binding: ActivityMainBinding
+    lateinit var binding: ActivityMainBinding
 
     private var mWebSocketClient: WebSocketClient? = null
 
@@ -39,6 +42,11 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        val intent: Intent = intent
+        val action: String? = intent.action
+        val data: Uri? = intent.data
+
 
         // setSupportActionBar(binding.toolbar)
 
@@ -63,6 +71,10 @@ class MainActivity : AppCompatActivity() {
 
         binding.serviceStateText.setText( "Service state: ${getServiceState(this)}")
 
+        binding.startWSBtn.setOnClickListener{
+            startWS()
+        }
+
         checkPermission()
     }
 
@@ -75,6 +87,10 @@ class MainActivity : AppCompatActivity() {
         } else {
             initView()
         }
+    }
+
+    fun setServiceStateText(text: String) {
+        binding.serviceStateText.setText(text)
     }
 
     private fun initView() {
@@ -103,23 +119,52 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun connectWebSocket() {
-        val uri: URI
-        uri = try {
-            URI("ws://127.0.0.1:38301/")
-        } catch (e: URISyntaxException) {
-            e.printStackTrace()
-            return
+    fun startWS() {
+
+        val t = Thread{
+
+            var webSocketServer : WSServer? = null
+            try{
+
+                var socketAddress = InetSocketAddress("127.0.0.1", 38301)
+                webSocketServer = WSServer(socketAddress, activityContext)
+                webSocketServer.start()
+
+            } catch (e : Exception) {
+                System.out.println(e.stackTrace)
+            } finally {
+                System.out.println(webSocketServer.toString())
+            }
         }
+        t.start()
+        initWSClient(null)
+        connectWebSocket()
+    }
+
+    private fun initWSClient(uriP: URI?) {
+
+        var uri = uriP
+
+        if(uri == null) {
+            uri = try {
+                URI("ws://127.0.0.1:38301/")
+            } catch (e: URISyntaxException) {
+                e.printStackTrace()
+                return
+            }
+        }
+
         mWebSocketClient = object : WebSocketClient(uri) {
             override fun onOpen(serverHandshake: ServerHandshake) {
-                Toast.makeText(activityContext, "WS Opened", Toast.LENGTH_SHORT).show()
-                mWebSocketClient!!.send("Hello from " + Build.MANUFACTURER + " " + Build.MODEL)
+                runOnUiThread{
+                    Toast.makeText(activityContext, "WS Opened", Toast.LENGTH_SHORT).show()
+                }
+                mWebSocketClient!!.send("test")
             }
 
             override fun onMessage(s: String) {
                 runOnUiThread {
-                    var text = "Got message " + s
+                    Toast.makeText(activityContext, s, Toast.LENGTH_LONG).show()
 
                 }
             }
@@ -132,6 +177,10 @@ class MainActivity : AppCompatActivity() {
                 Log.i("Websocket", "Error " + e.message)
             }
         }
+    }
+
+    private fun connectWebSocket() {
+
 
         try {
             mWebSocketClient?.connect()
@@ -139,6 +188,8 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception){
             Toast.makeText(activityContext, "${e.stackTrace.toString()}", Toast.LENGTH_LONG).show()
         }
+
+
 
 
     }
@@ -179,6 +230,8 @@ class EmptyClient : WebSocketClient {
     override fun onError(ex: Exception) {
         System.err.println("an error occurred:$ex")
     }
+
+
 
 
 }

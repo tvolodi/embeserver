@@ -19,7 +19,7 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
     var maxPowerValue: Int = -1
     var minPowerValue: Int = -1
 
-    lateinit var uhfReader: UHF
+    var uhfReader: UHF? = null
 
     var outPutEpcList: List<EPCModel> = listOf()
     val outPutEpcListLock: Object = Object()
@@ -29,11 +29,14 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
 
     val toneGenerator: ToneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 99)
 
-    init {
-        deviceConnect(null)
+    fun deviceDisconnect() {
+        // uhfReader?.CloseConnect()
+        UHFReader._Config.CloseConnect()
+        // UHFReader.
+        isConnected = false
     }
 
-    private fun deviceConnect(readerDevice: Object?) : ConnectResults {
+    fun deviceConnect(readerDevice: Object?) : ConnectResults {
         try {
             if(isConnected)
                 return ConnectResults.Success
@@ -46,12 +49,12 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
             if(uhfReader == null)
                 return ConnectResults.UnknownError
 
-            isConnected = uhfReader.OpenConnect(false, this)
-            // Thread.sleep(50)
-            uhfReader.SetFrequency("4")
+            var res = uhfReader?.OpenConnect(false, this)
+            Thread.sleep(500)
+            uhfReader!!.SetFrequency("4")
             // Thread.sleep(50)
 
-            var propertyStr = uhfReader.GetReaderProperty()
+            var propertyStr = uhfReader!!.GetReaderProperty()
             var propertyList = propertyStr.split("|")
             var hmPower = mapOf<Int, Int>(1 to 1, 2 to 3, 3 to 7, 4 to 15)
             maxPowerValue = propertyList[1].toInt()
@@ -60,7 +63,7 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
             currentAntNumber = hmPower[readerAntCount]!!
             // Thread.sleep(50)
 
-            readEPC()
+            // readEPC()
 
             return ConnectResults.Success
 
