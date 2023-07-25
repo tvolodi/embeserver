@@ -57,7 +57,7 @@ class DriverService : Service() {
 
     var serviceContext = this
 
-    var hopelandReader: HopelandRfidReader = HopelandRfidReader(this)
+    lateinit var hopelandReader: HopelandRfidReader
 
     /**
      * Use when service is binding service. We don't use it so return null - no binding.
@@ -113,8 +113,12 @@ class DriverService : Service() {
                 serviceHandler?.sendMessage(msg)
             }
 
+            hopelandReader = HopelandRfidReader(this)
+            hopelandReader.deviceConnect(null)
             // Update service state
             setServiceState(this, ServiceStateType.STARTED)
+
+
 //            mainActivity.setServiceStateText("Started")
             // Inform OS to restart service at once
             return  START_STICKY

@@ -6,16 +6,15 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import androidx.navigation.ui.AppBarConfiguration
-import com.pda.rfid.uhf.UHFReader
-import com.port.Adapt
 import com.tvolodi.embeserver.databinding.ActivityMainBinding
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.drafts.Draft
@@ -23,7 +22,6 @@ import org.java_websocket.handshake.ServerHandshake
 import java.net.InetSocketAddress
 import java.net.URI
 import java.net.URISyntaxException
-import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,8 +32,21 @@ class MainActivity : AppCompatActivity() {
 
     private var mWebSocketClient: WebSocketClient? = null
 
+    private var testWebSocketClient: WSClient = WSClient(URI("ws://127.0.0.1:38301/"), this)
+
     val activityContext = this
 
+    lateinit var hopelandRfidReader: HopelandRfidReader
+
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        return super.onKeyUp(keyCode, event)
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
@@ -72,10 +83,32 @@ class MainActivity : AppCompatActivity() {
         binding.serviceStateText.setText( "Service state: ${getServiceState(this)}")
 
         binding.startWSBtn.setOnClickListener{
-            startWS()
+            startWS(hopelandRfidReader)
+        }
+
+        binding.startReaderBtn.setOnClickListener{
+            hopelandRfidReader = HopelandRfidReader(this)
+            hopelandRfidReader.deviceConnect(null)
+        }
+
+        binding.stopReaderBtn.setOnClickListener{
+            hopelandRfidReader.deviceDisconnect()
+        }
+
+        binding.readTagBtn.setOnClickListener{
+            readTag()
         }
 
         checkPermission()
+    }
+
+    private fun readTag() {
+        var message = "read_tag"
+        testWebSocketClient.send(message)
+    }
+
+    fun setWSStatusTest(text: String){
+        binding.WSStatusValueTV.setText(text)
     }
 
     private fun checkPermission() {
@@ -119,7 +152,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    fun startWS() {
+    fun startWS(hopelandRfidReader: HopelandRfidReader) {
 
         val t = Thread{
 
@@ -127,7 +160,7 @@ class MainActivity : AppCompatActivity() {
             try{
 
                 var socketAddress = InetSocketAddress("127.0.0.1", 38301)
-                webSocketServer = WSServer(socketAddress, activityContext)
+                webSocketServer = WSServer(socketAddress, activityContext, hopelandRfidReader)
                 webSocketServer.start()
 
             } catch (e : Exception) {
@@ -137,8 +170,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         t.start()
-        initWSClient(null)
-        connectWebSocket()
+//        initWSClient(null)
+//        connectWebSocket()
     }
 
     private fun initWSClient(uriP: URI?) {
@@ -183,7 +216,12 @@ class MainActivity : AppCompatActivity() {
 
 
         try {
-            mWebSocketClient?.connect()
+            if(testWebSocketClient.isOpen != true) {
+                testWebSocketClient.connect()
+            }
+            testWebSocketClient.send("test")
+
+            // mWebSocketClient?.connect()
 
         } catch (e: Exception){
             Toast.makeText(activityContext, "${e.stackTrace.toString()}", Toast.LENGTH_LONG).show()

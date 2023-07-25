@@ -87,6 +87,25 @@
 
         </LinearLayout>
 
+        <Button
+            android:id="@+id/startReaderBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Start Reader" />
+
+        <Button
+            android:id="@+id/stopReaderBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Stop Reader" />
+
+        <Button
+            android:id="@+id/readTagBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Read Tag" />
+
     </com.google.android.material.appbar.AppBarLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
