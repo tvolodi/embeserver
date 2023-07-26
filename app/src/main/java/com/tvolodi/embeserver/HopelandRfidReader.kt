@@ -50,6 +50,7 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
             Adapt.enablePauseInBackGround(context)
             // Thread.sleep(50)
             uhfReader = UHFReader.getUHFInstance()
+
             if(uhfReader == null)
                 return ConnectResults.UnknownError
 

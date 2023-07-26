@@ -30,6 +30,12 @@ class WSServer(socketAddress: InetSocketAddress, val context: Context, val reade
         wsConnection?.send(message)
     }
 
+    fun got_epc_list(epcList: List<String>){
+
+        val message = "got_epc_list${FIELD_DIVIDER}${epcList.joinToString("$$")}"
+        wsConnection?.send(message)
+    }
+
     override fun onClose(conn: WebSocket?, code: Int, reason: String?, remote: Boolean) {
         // Some actions
     }
