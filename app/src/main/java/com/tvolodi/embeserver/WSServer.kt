@@ -1,7 +1,6 @@
 package com.tvolodi.embeserver
 
 import android.content.Context
-import android.widget.Toast
 import com.tvolodi.embeserver.Dividers.FIELD_DIVIDER
 import java.net.InetSocketAddress;
 
@@ -52,7 +51,17 @@ class WSServer(socketAddress: InetSocketAddress, val context: Context, val reade
         wsConnection = conn
         when (operationName) {
             "test" -> conn?.send("Test passed")
-            "read_tag" -> reader.readEPC()
+            "read_tag" -> {
+                reader.isContinueReading = true
+                reader.readEPC(0)
+                reader.isContinueReading = false
+            }
+
+            "read_tag_continuous" -> {
+                reader.isContinueReading = true
+                reader.readEPC(1)
+            }
+            "stop_reading" -> reader.isContinueReading = false
             else -> conn?.send("${message} was sent")
         }
     }

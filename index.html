@@ -1,0 +1,105 @@
+<!DOCTYPE HTML>
+
+<html>
+
+<head>
+
+    <script type="text/javascript">
+
+        // if ("WebSocket" in window) {
+        //     alert("WebSocket is supported by your Browser!");
+        // }
+
+        let ws = {}
+
+        let isOpened = false;
+
+        function addItem(tagNumber) {
+            var list = document.getElementById('tag_list');
+            var entry = document.createElement('li');
+            entry.appendChild(document.createTextNode(tagNumber));
+            list.appendChild(entry);        
+        }
+
+        function connectWS() {
+            
+            // Let us open a web socket
+            ws = new WebSocket("ws://localhost:38301/");
+
+            ws.onopen = function () {
+
+                // Web Socket is connected, send data using send()
+                ws.send("Message to send");
+                isOpened = true;
+                alert("Message is sent...");
+
+            };
+
+            ws.onmessage = function (evt) {
+                const receivedMsg = evt.data;
+                const messageArr = receivedMsg.split("::");
+                const operationName = messageArr[0];
+                switch(operationName) {
+                    case "got_epc":
+                        addItem(messageArr[1]);
+                    break;
+                    default:
+                }
+                alert("Message is received: " + received_msg);
+            };
+
+            ws.onclose = function () {
+
+                // websocket is closed.
+                alert("Connection is closed...");
+            };
+        }
+
+        function readTag() {
+            ws.send("read_tag")
+        }
+
+	function readTags() {
+	   ws.send("read_tag_continuous")
+	}
+
+	function stopReadTags() {
+	   ws.send("stop_reading")
+	}
+
+        
+    </script>
+
+</head>
+
+<body>
+    <div id="sse">
+        <a href="javascript:connectWS()">Connect to WS Server</a>
+    </div>
+    <div id="read_tag">
+        <a href="javascript:readTag()">Read a Tag</a>
+    </div>
+
+    <div id="read_tag_continuous">
+        <a href="javascript:readTags()">Read Tags Continuously</a>
+    </div>
+
+
+    <div id="stop_read_tag">
+        <a href="javascript:stopReadTags()">Stop Read Tags</a>
+    </div>
+
+
+
+    <div id="add_tag_list_item">
+        <a href="javascript:addItem('tag')">Add item a Tag</a>
+    </div>
+
+    <ol id="tag_list">
+        <li>Tag_1</li>
+        <li>Tag_2</li>
+    </ol>
+    
+</body>
+
+</html>

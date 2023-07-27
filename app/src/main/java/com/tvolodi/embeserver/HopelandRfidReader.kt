@@ -10,11 +10,14 @@ import com.pda.rfid.IAsynchronousMessage
 import com.pda.rfid.uhf.UHF
 import com.pda.rfid.uhf.UHFReader
 import com.port.Adapt
+import kotlinx.coroutines.time.delay
 import java.lang.Exception
+import java.time.Duration
 
 class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
 
     var isConnected: Boolean = false
+    var isContinueReading: Boolean = false
     val deviceName = "Hopeland HY820"
     var maxPowerValue: Int = -1
     var minPowerValue: Int = -1
@@ -40,11 +43,8 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
 
 
 
-    fun deviceConnect(readerDevice: Object?) : ConnectResults {
+    fun deviceConnect() : ConnectResults {
         try {
-            if(isConnected)
-                return ConnectResults.Success
-
             Adapt.init( context)
             // Thread.sleep(50)
             Adapt.enablePauseInBackGround(context)
@@ -87,10 +87,14 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
         wsServer.got_epc(epcStr)
     }
 
-    fun readEPC() : String {
-        var result : String = ""
-        UHFReader._Tag6C.GetEPC(1,0)
-        return  result
+    fun readEPC(mode: Int) {
+        deviceConnect()
+        while(isContinueReading){
+            var result = UHFReader._Tag6C.GetEPC(1, mode)
+            Thread.sleep(50)
+            if(mode == 0) break
+        }
+        deviceDisconnect()
     }
 }
 

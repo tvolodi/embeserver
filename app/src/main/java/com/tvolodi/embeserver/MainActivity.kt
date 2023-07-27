@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.startReaderBtn.setOnClickListener{
             hopelandRfidReader = HopelandRfidReader(this)
-            hopelandRfidReader.deviceConnect(null)
+            hopelandRfidReader.deviceConnect()
         }
 
         binding.stopReaderBtn.setOnClickListener{

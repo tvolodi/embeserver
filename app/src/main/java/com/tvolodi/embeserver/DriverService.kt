@@ -114,7 +114,7 @@ class DriverService : Service() {
             }
 
             hopelandReader = HopelandRfidReader(this)
-            hopelandReader.deviceConnect(null)
+            hopelandReader.deviceConnect()
             // Update service state
             setServiceState(this, ServiceStateType.STARTED)
 
@@ -186,7 +186,7 @@ class DriverService : Service() {
 //                System.out.println(webSocketServer.toString())
 //            }
 
-            hopelandReader.deviceConnect(null)
+            hopelandReader.deviceConnect()
 
 //            if(commandName == ActionType.START.name)
 //
