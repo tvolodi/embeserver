@@ -3,6 +3,8 @@ package com.tvolodi.embeserver
 // import org.java_websocket.drafts.Draft_10;
 
 import android.Manifest
+import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -80,7 +82,10 @@ class MainActivity : AppCompatActivity() {
             doTestWSAction()
         }
 
-        binding.serviceStateText.setText( "Service state: ${getServiceState(this)}")
+        binding.serviceStateText.setText(
+            "Service state: ${"Unknown"}"
+//                    "${getServiceState(this)}"
+        )
 
         binding.startWSBtn.setOnClickListener{
             startWS(hopelandRfidReader)
@@ -100,6 +105,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         checkPermission()
+    }
+
+    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+        try{
+            val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            for (service in manager.getRunningServices(
+                Int.MAX_VALUE
+            )){
+                if(serviceClass.name == service.service.className) {
+                    return true
+                }
+            }
+        } catch (e: Exception) {
+            return  false
+        }
+
+        return false
     }
 
     private fun readTag() {
@@ -137,17 +159,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun doDriverAction(action: ActionType){
-        var currentState = getServiceState(this)
-        if ( currentState == ServiceStateType.STOPPED
-            && action == ActionType.STOP) return
-        if (currentState == ServiceStateType.STARTED
-            && action == ActionType.START) return
-
+//        var currentState = getServiceState(this)
+//        if ( currentState == ServiceStateType.STOPPED
+//            && action == ActionType.STOP) return
+//        if (currentState == ServiceStateType.STARTED
+//            && action == ActionType.START) return
+//
 
 
         Intent(this, DriverService::class.java).also {
             it.action = action.name
-            startForegroundService(it)
+            startService(it)
         }
 
     }

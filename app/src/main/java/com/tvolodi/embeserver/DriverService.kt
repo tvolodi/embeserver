@@ -1,8 +1,15 @@
 package com.tvolodi.embeserver
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationChannelGroup
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
@@ -12,11 +19,8 @@ import android.os.Message
 import android.os.Process
 import android.util.Log
 import android.widget.Toast
-import com.pda.rfid.uhf.UHFReader
+import androidx.core.app.NotificationCompat
 
-import io.ktor.server.application.Application
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
 import io.ktor.server.netty.NettyApplicationEngine
 import java.net.InetSocketAddress
 
@@ -57,7 +61,14 @@ class DriverService : Service() {
 
     var serviceContext = this
 
-    lateinit var hopelandReader: HopelandRfidReader
+    var hopelandReader: HopelandRfidReader? = null
+    var wsThread: Thread? = null
+
+    //Notififcation for ON-going
+    private var iconNotification: Bitmap? = null
+    private var notification: Notification? = null
+    var mNotificationManager: NotificationManager? = null
+    private val mNotificationId = 123
 
     /**
      * Use when service is binding service. We don't use it so return null - no binding.
@@ -75,25 +86,22 @@ class DriverService : Service() {
 
 //        Toast.makeText(serviceContext, "Service on create", Toast.LENGTH_LONG).show()
 
-        try {
-            var ht = HandlerThread("KtorProcess", Process.THREAD_PRIORITY_BACKGROUND).apply {
-                try{
-                    start()
-                } catch (e: Exception){
-                    Log.d("ERROR", e.stackTrace.toString())
-                }
-
-
-                serviceLooper = looper
-
-                // Prepare service handler for KTor
-                serviceHandler = ServiceHandler(looper, serviceContext)
-            }
-        } catch (e: Exception) {
-            Log.d("ERROR", e.stackTrace.toString())
-        }
-
-
+//        try {
+//            var ht = HandlerThread("RfidDriverThread", Process.THREAD_PRIORITY_BACKGROUND).apply {
+//                try{
+//                    start()
+//                } catch (e: Exception){
+//                    Log.d("ERROR", e.stackTrace.toString())
+//                }
+//
+//                serviceLooper = looper
+//
+//                // Prepare service handler for KTor
+//                serviceHandler = ServiceHandler(looper, serviceContext)
+//            }
+//        } catch (e: Exception) {
+//            Log.d("ERROR", e.stackTrace.toString())
+//        }
     }
 
     /**
@@ -102,48 +110,66 @@ class DriverService : Service() {
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
         commandName = intent.action
-        // var mainActivity = intent.component as MainActivity
+
 
         if(intent.action == ActionType.START.name){
 
             // Create message for handler and run KTor
-            serviceHandler?.obtainMessage()?.also { msg ->
-                msg.arg1 = startId
+//            serviceHandler?.obtainMessage()?.also { msg: Message ->
+//                msg.arg1 = startId
+//
+//                serviceHandler?.sendMessage(msg)
+//            }
 
-                serviceHandler?.sendMessage(msg)
+            generateForegroundNotification()
+
+            val t = Thread{
+
+                var webSocketServer : WSServer? = null
+                try{
+
+                    var socketAddress = InetSocketAddress("127.0.0.1", 38301)
+                    webSocketServer = WSServer(socketAddress, serviceContext, null)
+                    webSocketServer.start()
+
+                } catch (e : Exception) {
+                    System.out.println(e.stackTrace)
+                } finally {
+                    System.out.println(webSocketServer.toString())
+                }
             }
+            t.start()
 
-            hopelandReader = HopelandRfidReader(this)
-            hopelandReader.deviceConnect()
             // Update service state
-            setServiceState(this, ServiceStateType.STARTED)
+//            setServiceState(this, ServiceStateType.STARTED)
 
-
-//            mainActivity.setServiceStateText("Started")
             // Inform OS to restart service at once
-            return  START_STICKY
+//            return  START_NOT_STICKY
+            return START_STICKY
         } else
         {
 
+            stopForeground(true)
+            stopSelf()
 
             // Inform user on stop
             // Toast.makeText(this, "Ktor service stopping", Toast.LENGTH_SHORT).show()
 
             // If 33 and greater then we have to use const
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                stopForeground(true)
-            }
+//            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+//                stopForeground(STOP_FOREGROUND_REMOVE)
+//            } else {
+//                stopForeground(true)
+//            }
 
             // ktorServer?.stop(100)
 
             //
             // hopelandReader.uhfReader.CloseConnect()
-            hopelandReader.deviceDisconnect()
+//            hopelandReader.deviceDisconnect()
 
             // Update service state
-            setServiceState(this, ServiceStateType.STOPPED)
+//            setServiceState(this, ServiceStateType.STOPPED)
 
             // mainActivity.setServiceStateText("Stopped")
 
@@ -160,12 +186,66 @@ class DriverService : Service() {
         Toast.makeText(this, "KTor service done", Toast.LENGTH_SHORT).show()
     }
 
-    //
-    private inner class ServiceHandler (looper: Looper, val context: Context): Handler(looper) {
+    private fun generateForegroundNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val intentMainLanding = Intent(this, MainActivity::class.java)
+            val pendingIntent =
+                PendingIntent.getActivity(this, 0, intentMainLanding, 0)
+            iconNotification = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+            if (mNotificationManager == null) {
+                mNotificationManager =
+                    this.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                assert(mNotificationManager != null)
+                mNotificationManager?.createNotificationChannelGroup(
+                    NotificationChannelGroup("chats_group", "Chats")
+                )
+                val notificationChannel =
+                    NotificationChannel(
+                        "service_channel", "Service Notifications",
+                        NotificationManager.IMPORTANCE_MIN
+                    )
+                notificationChannel.enableLights(false)
+                notificationChannel.lockscreenVisibility = Notification.VISIBILITY_SECRET
+                mNotificationManager?.createNotificationChannel(notificationChannel)
+            }
+            val builder = NotificationCompat.Builder(this, "service_channel")
+
+            builder.setContentTitle(
+                StringBuilder(resources.getString(R.string.app_name)).append(" service is running")
+                    .toString()
+            )
+                .setTicker(
+                    StringBuilder(resources.getString(R.string.app_name)).append("service is running")
+                        .toString()
+                )
+                .setContentText("Touch to open") //                    , swipe down for more options.
+//                .setSmallIcon(R.drawable.ic_alaram)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setWhen(0)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+            if (iconNotification != null) {
+                builder.setLargeIcon(Bitmap.createScaledBitmap(iconNotification!!, 128, 128, false))
+            }
+//            builder.color = resources.getColor(R.color.purple_200)
+            notification = builder.build()
+            startForeground(mNotificationId, notification)
+        }
+    }
+
+        //
+    private inner class ServiceHandler(
+        looper: Looper,
+        val context: Context
+    ): Handler(looper) {
 
         override fun handleMessage(msg: Message) {
 
-//            Toast.makeText(context, "Ktor service starting", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Ktor service starting", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Service started", Toast.LENGTH_SHORT).show()
 //
 //            ktorServer = embeddedServer(Netty, port=8080, host = "0.0.0.0", module = Application::module).start(wait = false)
 //            Toast.makeText(context, "Ktor service started", Toast.LENGTH_SHORT).show()
@@ -186,7 +266,7 @@ class DriverService : Service() {
 //                System.out.println(webSocketServer.toString())
 //            }
 
-            hopelandReader.deviceConnect()
+//            hopelandReader.deviceConnect()
 
 //            if(commandName == ActionType.START.name)
 //

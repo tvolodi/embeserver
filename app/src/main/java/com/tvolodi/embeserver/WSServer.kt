@@ -10,12 +10,12 @@ import org.java_websocket.server.WebSocketServer;
 import java.lang.Exception
 
 
-class WSServer(socketAddress: InetSocketAddress, val context: Context, val reader: HopelandRfidReader ) : WebSocketServer(socketAddress) {
+class WSServer(socketAddress: InetSocketAddress, val context: Context, val reader: HopelandRfidReader? ) : WebSocketServer(socketAddress) {
 
     var clientHandshake: ClientHandshake? = null
 
     init{
-        reader.wsServer = this
+        reader?.wsServer = this
     }
 
     var wsConnection: WebSocket? = null
@@ -52,16 +52,16 @@ class WSServer(socketAddress: InetSocketAddress, val context: Context, val reade
         when (operationName) {
             "test" -> conn?.send("Test passed")
             "read_tag" -> {
-                reader.isContinueReading = true
-                reader.readEPC(0)
-                reader.isContinueReading = false
+                reader?.isContinueReading = true
+                reader?.readEPC(0)
+                reader?.isContinueReading = false
             }
 
             "read_tag_continuous" -> {
-                reader.isContinueReading = true
-                reader.readEPC(1)
+                reader?.isContinueReading = true
+                reader?.readEPC(1)
             }
-            "stop_reading" -> reader.isContinueReading = false
+            "stop_reading" -> reader?.isContinueReading = false
             else -> conn?.send("${message} was sent")
         }
     }

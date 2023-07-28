@@ -24,7 +24,7 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
 
     var uhfReader: UHF? = null
 
-    lateinit var wsServer: WSServer
+    var wsServer: WSServer? = null
 
     var outPutEpcList: List<EPCModel> = listOf()
     val outPutEpcListLock: Object = Object()
@@ -40,8 +40,6 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
         // UHFReader.
         isConnected = false
     }
-
-
 
     fun deviceConnect() : ConnectResults {
         try {
@@ -84,7 +82,7 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
         val epcStr = p0?._EPC
         toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
         // Toast.makeText(context, "EPC: ${someDataStr}", Toast.LENGTH_SHORT).show()
-        wsServer.got_epc(epcStr)
+        wsServer?.got_epc(epcStr)
     }
 
     fun readEPC(mode: Int) {
