@@ -14,6 +14,8 @@ class WSServer(socketAddress: InetSocketAddress, val context: Context, val reade
 
     var clientHandshake: ClientHandshake? = null
 
+    var clientConnectionList : List<WebSocket?> = mutableListOf()
+
     init{
         reader?.wsServer = this
     }
@@ -22,6 +24,7 @@ class WSServer(socketAddress: InetSocketAddress, val context: Context, val reade
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
         wsConnection = conn
         clientHandshake = handshake
+        clientConnectionList += conn
     }
 
     fun got_epc(epc: String?){

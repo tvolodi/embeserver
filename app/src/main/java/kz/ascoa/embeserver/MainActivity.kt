@@ -26,6 +26,10 @@ import java.net.URISyntaxException
 
 class MainActivity : AppCompatActivity() {
 
+    private var isSingleDoubleClick = 0
+    private var clickOneTime : Long = 0L
+    private var clickTwoTime : Long = 0L
+
     private val REQUEST_READ_PHONE_STATE = 1
 
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -41,12 +45,20 @@ class MainActivity : AppCompatActivity() {
 
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-
         return super.onKeyDown(keyCode, event)
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        return super.onKeyUp(keyCode, event)
+        // return super.onKeyUp(keyCode, event)
+
+        // If trigger is
+        if(keyCode == 139
+            && event?.action == KeyEvent.ACTION_UP
+            && isSingleDoubleClick == 2) {
+            isSingleDoubleClick = 0
+        }
+
+        return true // stop propagate event further
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)

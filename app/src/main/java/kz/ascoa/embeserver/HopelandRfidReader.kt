@@ -75,6 +75,7 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
     }
 
 
+    @Synchronized
     override fun OutPutEPC(p0: EPCModel?) {
         val epcStr = p0?._EPC
         toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
