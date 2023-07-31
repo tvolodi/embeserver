@@ -1,7 +1,7 @@
-package com.tvolodi.embeserver
+package kz.ascoa.embeserver
 
 import android.content.Context
-import com.tvolodi.embeserver.Dividers.FIELD_DIVIDER
+import kz.ascoa.embeserver.Dividers.FIELD_DIVIDER
 import java.net.InetSocketAddress;
 
 import org.java_websocket.WebSocket;
@@ -40,8 +40,8 @@ class WSServer(socketAddress: InetSocketAddress, val context: Context, val reade
     }
 
     /**
-     * Message format:
-     * operation_name;
+     * Message format: operation_name::
+     * operation_name
      * continuous_read_tag
      */
     override fun onMessage(conn: WebSocket?, message: String?) {
@@ -61,8 +61,10 @@ class WSServer(socketAddress: InetSocketAddress, val context: Context, val reade
                 reader?.isContinueReading = true
                 reader?.readEPC(1)
             }
+
             "stop_reading" -> reader?.isContinueReading = false
-            else -> conn?.send("${message} was sent")
+
+            else -> conn?.send("${message} was re-sent")
         }
     }
 

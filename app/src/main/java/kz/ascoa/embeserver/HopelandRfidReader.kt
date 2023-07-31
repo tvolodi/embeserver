@@ -1,4 +1,4 @@
-package com.tvolodi.embeserver
+package kz.ascoa.embeserver
 
 import android.content.Context
 import android.media.AudioManager
@@ -10,9 +10,7 @@ import com.pda.rfid.IAsynchronousMessage
 import com.pda.rfid.uhf.UHF
 import com.pda.rfid.uhf.UHFReader
 import com.port.Adapt
-import kotlinx.coroutines.time.delay
 import java.lang.Exception
-import java.time.Duration
 
 class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
 
@@ -66,14 +64,13 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
             currentAntNumber = hmPower[readerAntCount]!!
             // Thread.sleep(50)
 
-            // readEPC()
-
-            return ConnectResults.Success
+             return ConnectResults.Success
 
         } catch (e: Exception){
             Log.d("Error", "Connect to UHF device: " + e.stackTrace.toString())
+            // TODO
             Toast.makeText(context, "Error to connect to device: ${e.stackTrace.toString()}", Toast.LENGTH_SHORT).show()
-            return  ConnectResults.UnknownError
+            return ConnectResults.UnknownError
         }
     }
 

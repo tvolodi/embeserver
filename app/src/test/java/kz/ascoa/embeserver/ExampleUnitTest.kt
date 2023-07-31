@@ -1,4 +1,4 @@
-package com.tvolodi.embeserver
+package kz.ascoa.embeserver
 
 import org.junit.Test
 

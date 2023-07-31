@@ -1,4 +1,4 @@
-package com.tvolodi.embeserver
+package kz.ascoa.embeserver
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -12,14 +12,12 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Handler
-import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
 import android.os.Message
-import android.os.Process
-import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import com.tvolodi.embeserver.R
 
 import io.ktor.server.netty.NettyApplicationEngine
 import java.net.InetSocketAddress
@@ -33,26 +31,26 @@ private var commandName : String? = ""
 /**
  * Get service state from shared preferences
  */
-fun getServiceState(context: Context): ServiceStateType {
-    val sharedPreferences = context.getSharedPreferences(name, 0)
-    val value = sharedPreferences.getString(key, ServiceStateType.STOPPED.name)
-    val stateValue = ServiceStateType.valueOf(value as String)
-    return  stateValue
-}
+//fun getServiceState(context: Context): ServiceStateType {
+//    val sharedPreferences = context.getSharedPreferences(name, 0)
+//    val value = sharedPreferences.getString(key, ServiceStateType.STOPPED.name)
+//    val stateValue = ServiceStateType.valueOf(value as String)
+//    return  stateValue
+//}
+//
+///**
+// * Set service state to shcred preferences
+// */
+//fun setServiceState(context: Context, state: ServiceStateType) {
+//    val sharedPreferences = context.getSharedPreferences(name, 0)
+//    sharedPreferences.edit().let{
+//        it.putString(key, state.name)
+//        it.apply()
+//    }
+//}
 
 /**
- * Set service state to shcred preferences
- */
-fun setServiceState(context: Context, state: ServiceStateType) {
-    val sharedPreferences = context.getSharedPreferences(name, 0)
-    sharedPreferences.edit().let{
-        it.putString(key, state.name)
-        it.apply()
-    }
-}
-
-/**
- * Service to run KTor web-server. It serves as communication layer to native drivers
+ * Service to run RFID driver with communication through Web socket
  */
 class DriverService : Service() {
 
@@ -121,7 +119,7 @@ class DriverService : Service() {
 //                serviceHandler?.sendMessage(msg)
 //            }
 
-            generateForegroundNotification()
+            hopelandReader = HopelandRfidReader(this)
 
             val t = Thread{
 
@@ -129,7 +127,7 @@ class DriverService : Service() {
                 try{
 
                     var socketAddress = InetSocketAddress("127.0.0.1", 38301)
-                    webSocketServer = WSServer(socketAddress, serviceContext, null)
+                    webSocketServer = WSServer(socketAddress, serviceContext, hopelandReader)
                     webSocketServer.start()
 
                 } catch (e : Exception) {
@@ -139,6 +137,8 @@ class DriverService : Service() {
                 }
             }
             t.start()
+
+            generateForegroundNotification()
 
             // Update service state
 //            setServiceState(this, ServiceStateType.STARTED)
@@ -161,8 +161,6 @@ class DriverService : Service() {
 //            } else {
 //                stopForeground(true)
 //            }
-
-            // ktorServer?.stop(100)
 
             //
             // hopelandReader.uhfReader.CloseConnect()
@@ -221,12 +219,16 @@ class DriverService : Service() {
                         .toString()
                 )
                 .setContentText("Touch to open") //                    , swipe down for more options.
-//                .setSmallIcon(R.drawable.ic_alaram)
+                .setSmallIcon(R.drawable.ic_service_notification)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setWhen(0)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
+
+            iconNotification = BitmapFactory.decodeResource(resources,
+                R.drawable.ic_service_notification
+            )
             if (iconNotification != null) {
                 builder.setLargeIcon(Bitmap.createScaledBitmap(iconNotification!!, 128, 128, false))
             }

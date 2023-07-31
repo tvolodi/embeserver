@@ -1,4 +1,4 @@
-package com.tvolodi.embeserver
+package kz.ascoa.embeserver
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.call

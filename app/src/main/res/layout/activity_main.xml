@@ -5,20 +5,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    tools:context=".MainActivity">
+    tools:context="kz.ascoa.embeserver.MainActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true">
-
-        <EditText
-            android:id="@+id/serviceStateText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="text"
-            android:text="Service state:" />
 
         <EditText
             android:id="@+id/editTextText"
@@ -48,63 +40,10 @@
             android:layout_height="wrap_content"
             app:srcCompat="@android:drawable/ic_delete" />
 
-        <EditText
-            android:id="@+id/editTextText3"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="text"
-            android:text="Name" />
-
-        <Button
-            android:id="@+id/testWSBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Test WS" />
-
-        <Button
-            android:id="@+id/startWSBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Start WS Server" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/WSStatusTV"
-                android:layout_width="131dp"
-                android:layout_height="wrap_content"
-                android:text="WS Status:" />
-
-            <TextView
-                android:id="@+id/WSStatusValueTV"
-                android:layout_width="181dp"
-                android:layout_height="wrap_content"
-                android:text="Unknown" />
-
-        </LinearLayout>
-
-        <Button
-            android:id="@+id/startReaderBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Start Reader" />
-
-        <Button
-            android:id="@+id/stopReaderBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Stop Reader" />
-
-        <Button
-            android:id="@+id/readTagBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Read Tag" />
+            android:orientation="horizontal"/>
 
     </com.google.android.material.appbar.AppBarLayout>
 

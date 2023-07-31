@@ -1,7 +1,7 @@
-package com.tvolodi.embeserver
+package kz.ascoa.embeserver
 
 import android.util.Log
-import com.tvolodi.embeserver.Dividers.FIELD_DIVIDER
+import kz.ascoa.embeserver.Dividers.FIELD_DIVIDER
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import java.net.URI
@@ -17,10 +17,10 @@ class WSClient(uri: URI, var mainActivity: MainActivity) : WebSocketClient(uri) 
         val operationName = messageContentList.get(0)
         when(operationName) {
             "test" -> {
-                mainActivity.setServiceStateText("Working")
+
             }
             "got_epc" -> {
-                mainActivity.setServiceStateText("got_epc")
+
             }
         }
 
