@@ -10,6 +10,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -68,6 +70,8 @@ class DriverService : Service() {
     var mNotificationManager: NotificationManager? = null
     private val mNotificationId = 123
 
+    public val toneGenerator: ToneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+
     /**
      * Use when service is binding service. We don't use it so return null - no binding.
      */
@@ -107,6 +111,8 @@ class DriverService : Service() {
      */
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
+
+
         commandName = intent.action
 
 
@@ -119,7 +125,7 @@ class DriverService : Service() {
 //                serviceHandler?.sendMessage(msg)
 //            }
 
-            hopelandReader = HopelandRfidReader(this)
+            hopelandReader = HopelandRfidReader(this, toneGenerator)
 
             val t = Thread{
 
@@ -127,7 +133,7 @@ class DriverService : Service() {
                 try{
 
                     var socketAddress = InetSocketAddress("127.0.0.1", 38301)
-                    webSocketServer = WSServer(socketAddress, serviceContext, hopelandReader)
+                    webSocketServer = WSServer(socketAddress, serviceContext, hopelandReader, toneGenerator)
                     webSocketServer.start()
 
                 } catch (e : Exception) {

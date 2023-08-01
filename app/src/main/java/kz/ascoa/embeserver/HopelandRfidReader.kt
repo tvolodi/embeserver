@@ -7,12 +7,16 @@ import android.util.Log
 import android.widget.Toast
 import com.pda.rfid.EPCModel
 import com.pda.rfid.IAsynchronousMessage
+import com.pda.rfid.uhf.Tag6C
 import com.pda.rfid.uhf.UHF
 import com.pda.rfid.uhf.UHFReader
 import com.port.Adapt
 import java.lang.Exception
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
-class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
+class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator)  : IAsynchronousMessage {
 
     var isConnected: Boolean = false
     var isContinueReading: Boolean = false
@@ -24,13 +28,16 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
 
     var wsServer: WSServer? = null
 
-    var outPutEpcList: List<EPCModel> = listOf()
-    val outPutEpcListLock: Object = Object()
+    // var outPutEpcList: List<EPCModel> = listOf()
+    // val outPutEpcListLock: Object = Object()
+
+    var listLock = ReentrantLock()
+    var tagList: List<EPCModel?> = mutableListOf()
 
     var currentAntNumber = 1
-    var readerAntCount = 1
+    private var readerAntCount : Int = 1
 
-    val toneGenerator: ToneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 99)
+    val lToneGenerator: ToneGenerator = toneGenerator
 
     fun deviceDisconnect() {
         // uhfReader?.CloseConnect()
@@ -62,6 +69,12 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
             minPowerValue = 0
             readerAntCount = propertyList[2].toInt()
             currentAntNumber = hmPower[readerAntCount]!!
+
+//            val toneGenerator: ToneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 99)
+//            toneGenerator.startTone(ToneGenerator.TONE_CDMA_CONFIRM, 750)
+
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 3000)
+
             // Thread.sleep(50)
 
              return ConnectResults.Success
@@ -74,14 +87,43 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
         }
     }
 
-
-    @Synchronized
+    // @Synchronized
     override fun OutPutEPC(p0: EPCModel?) {
         val epcStr = p0?._EPC
         toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
         // Toast.makeText(context, "EPC: ${someDataStr}", Toast.LENGTH_SHORT).show()
-        wsServer?.got_epc(epcStr)
+        // wsServer?.got_epc(epcStr)
+        listLock.lock()
+        tagList += p0
+        listLock.unlock()
     }
+
+    fun getAndClearTagList(): List<EPCModel?> {
+        listLock.lock()
+        var result = tagList
+        tagList = mutableListOf()
+        listLock.unlock()
+        return result
+    }
+
+    /**
+     * Set antenna power. Value - %% from max power. 0 - MIN (0dBm), 100 - MAX (30dBm).
+     */
+    fun setSignalPower(ratio: Float? = 100f) : Int {
+        var lRatio = ratio?: 100f
+        var value = (maxPowerValue * lRatio).roundToInt()
+        var i = 1
+        var result: Int = -1
+        while(i <= readerAntCount) {
+            result = UHFReader._Config.SetANTPowerParam(i, value)
+            if(result != 0)
+                return  result
+            i++
+        }
+        return 0
+    }
+
+
 
     fun readEPC(mode: Int) {
         deviceConnect()
@@ -91,6 +133,39 @@ class HopelandRfidReader (val context: Context)  : IAsynchronousMessage {
             if(mode == 0) break
         }
         deviceDisconnect()
+    }
+
+    fun getTagDistance(): Int {
+        isContinueReading = true
+        readEPC(0)
+        isContinueReading = false
+        Thread.sleep(50)
+        var tagList = getAndClearTagList()
+        if(tagList.count() == 0)
+            return 0
+        var tagInfo = tagList.last()
+        var result = calcDistanceByTagRssi(tagInfo?._RSSI)
+        return result
+    }
+
+    private fun calcDistanceByTagRssi(rssi: Byte?) : Int {
+        if (rssi == null)
+            return 0
+
+        try
+        {
+            var rssiDbl = rssi.toDouble()
+            if (rssiDbl == 0.0) return 1;
+            var ratio = rssiDbl / maxPowerValue;
+            if (ratio < 1.0)
+                return ratio.pow(10).toInt()
+            var distance =  0.89976 * ratio.pow( 7.7095) + 0.111;
+            return (distance / 60).toInt();
+        }
+        catch (e: Exception)
+        {
+            return 1;
+        }
     }
 }
 

@@ -74,18 +74,22 @@
                 alert("Connection is closed...");
             };
         }
+		
+		function getTagDistance(){
+			ws.send("get_tag_distance")
+		}
 
         function readTag() {
             ws.send("read_tag")
         }
 
-	function readTags() {
-	   ws.send("read_tag_continuous")
-	}
+		function readTags() {
+		   ws.send("read_tag_continuous")
+		}
 
-	function stopReadTags() {
-	   ws.send("stop_reading")
-	}
+		function stopReadTags() {
+		   ws.send("stop_reading")
+		}
 
         
     </script>
@@ -108,7 +112,9 @@
     <div id="stop_read_tag">
         <a href="javascript:stopReadTags()">Stop Read Tags</a>
     </div>
-
+    <div id="get_tag_distance">
+        <a href="javascript:getTagDistance()">Get Distance to Tag</a>
+    </div>
 
 
     <div id="add_tag_list_item">
