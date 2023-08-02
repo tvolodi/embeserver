@@ -1,7 +1,6 @@
 package kz.ascoa.embeserver
 
 import android.content.Context
-import android.media.AudioManager
 import android.media.ToneGenerator
 import kz.ascoa.embeserver.Dividers.FIELD_DIVIDER
 import kz.ascoa.embeserver.Dividers.VALUE_DIVIDER
@@ -66,33 +65,34 @@ class WSServer(
 
         wsConnection = conn
         when (operationName) {
-            "test" -> conn?.send("Test passed")
+            WSCommands.TEST -> conn?.send("Test passed")
 
-            "get_tag_distance" -> {
+            WSCommands.GET_TAG_DISTANCE -> {
                 var distance = reader?.getTagDistance()
                 var message  = "got_tag_distance${FIELD_DIVIDER}${distance}"
                 conn?.send(message)
             }
 
-            "read_tag" -> {
+            WSCommands.READ_TAG -> {
                 isContinueReading = true
                 reader?.isContinueReading = isContinueReading
                 reader?.readEPC(0)
                 isContinueReading = false
                 reader?.isContinueReading = isContinueReading
-                sendResult(conn)
+                sendTagReadResult(conn)
             }
 
-            "read_tag_continuous" -> {
+            WSCommands.READ_TAG_CONTINUOUS -> {
                 isContinueReading = true
                 reader?.isContinueReading = isContinueReading
                 reader?.readEPC(1)
                 while(isContinueReading){
-                    sendResult(conn)
+                    sendTagReadResult(conn)
+                    Thread.sleep(50)
                 }
             }
 
-            "set_power" -> {
+            WSCommands.SET_POWER -> {
                 var ratio = parsedMessage?.get(1)?.toFloat()
                 val result = reader?.setSignalPower(ratio)
                 if(result != 0) {
@@ -100,7 +100,7 @@ class WSServer(
                 }
             }
 
-            "stop_reading" -> {
+            WSCommands.STOP_READING -> {
                 isContinueReading = false
                 reader?.isContinueReading = isContinueReading
             }
@@ -109,10 +109,11 @@ class WSServer(
         }
     }
 
-    private fun sendResult(conn: WebSocket?) {
+    private fun sendTagReadResult(conn: WebSocket?) {
         var resultTagList = reader?.getAndClearTagList()
+        val tagString = resultTagList?.joinToString(separator = VALUE_DIVIDER)
         var resultString =
-            "got_epc${FIELD_DIVIDER}${resultTagList?.joinToString(separator = VALUE_DIVIDER)}"
+            "${Responses.GOT_EPC}${FIELD_DIVIDER}${tagString}"
         conn?.send(resultString)
     }
 
@@ -135,4 +136,18 @@ class WSServer(
 //            i++
 //        }
     }
+}
+
+object WSCommands {
+    const val TEST = "test"
+    const val GET_TAG_DISTANCE = "get_tag_distance"
+    const val READ_TAG = "read_tag"
+    const val READ_TAG_CONTINUOUS = "read_tag_continuous"
+    const val SET_POWER = "set_power"
+    const val STOP_READING = "stop_reading"
+}
+
+object Responses {
+    val GOT_TAG_DISTANCE = "got_tag_distance"
+    const val GOT_EPC = "got_epc"
 }

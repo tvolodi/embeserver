@@ -114,16 +114,17 @@ class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator
         var value = (maxPowerValue * lRatio).roundToInt()
         var i = 1
         var result: Int = -1
+        deviceConnect()
         while(i <= readerAntCount) {
+
             result = UHFReader._Config.SetANTPowerParam(i, value)
             if(result != 0)
-                return  result
+                break
             i++
         }
-        return 0
+        deviceDisconnect()
+        return result
     }
-
-
 
     fun readEPC(mode: Int) {
         deviceConnect()

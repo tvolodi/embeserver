@@ -31,6 +31,10 @@ private var ktorServer : NettyApplicationEngine? = null
 private var commandName : String? = ""
 
 /**
+ * https://betterprogramming.pub/what-is-foreground-service-in-android-3487d9719ab6
+ */
+
+/**
  * Get service state from shared preferences
  */
 //fun getServiceState(context: Context): ServiceStateType {
@@ -64,8 +68,8 @@ class DriverService : Service() {
     var hopelandReader: HopelandRfidReader? = null
     var wsThread: Thread? = null
 
-    //Notififcation for ON-going
     private var iconNotification: Bitmap? = null
+
     private var notification: Notification? = null
     var mNotificationManager: NotificationManager? = null
     private val mNotificationId = 123
@@ -80,8 +84,7 @@ class DriverService : Service() {
     }
 
     /**
-     * On Create event handler (?)
-     * Prepare a new thread for our service
+     * On Create event handler. Called once on service creation (before onStartCommand ?)
      */
     override fun onCreate(){
         super.onCreate()
@@ -111,10 +114,7 @@ class DriverService : Service() {
      */
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
-
-
         commandName = intent.action
-
 
         if(intent.action == ActionType.START.name){
 
@@ -127,6 +127,7 @@ class DriverService : Service() {
 
             hopelandReader = HopelandRfidReader(this, toneGenerator)
 
+            // Run Web Socket Server in it's own thread
             val t = Thread{
 
                 var webSocketServer : WSServer? = null
@@ -137,13 +138,12 @@ class DriverService : Service() {
                     webSocketServer.start()
 
                 } catch (e : Exception) {
-                    System.out.println(e.stackTrace)
-                } finally {
-                    System.out.println(webSocketServer.toString())
+
                 }
             }
             t.start()
 
+            // Show notification. Hopeland will now normally work in the service without it
             generateForegroundNotification()
 
             // Update service state
@@ -187,7 +187,7 @@ class DriverService : Service() {
 
     override fun onDestroy() {
         // Inform user
-        Toast.makeText(this, "KTor service done", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Driver service stopped", Toast.LENGTH_SHORT).show()
     }
 
     private fun generateForegroundNotification() {

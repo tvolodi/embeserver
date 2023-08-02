@@ -80,6 +80,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         checkPermission()
+
+        doDriverAction(ActionType.START)
     }
 
 //    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
@@ -134,28 +136,6 @@ class MainActivity : AppCompatActivity() {
             startService(it)
         }
     }
-
-//    fun startWS(hopelandRfidReader: HopelandRfidReader) {
-//
-//        val t = Thread{
-//
-//            var webSocketServer : WSServer? = null
-//            try{
-//
-//                var socketAddress = InetSocketAddress("127.0.0.1", 38301)
-//                webSocketServer = WSServer(socketAddress, activityContext, hopelandRfidReader)
-//                webSocketServer.start()
-//
-//            } catch (e : Exception) {
-//                System.out.println(e.stackTrace)
-//            } finally {
-//                System.out.println(webSocketServer.toString())
-//            }
-//        }
-//        t.start()
-////        initWSClient(null)
-////        connectWebSocket()
-//    }
 
 //    private fun initWSClient(uriP: URI?) {
 //
