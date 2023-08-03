@@ -82,6 +82,12 @@ class MainActivity : AppCompatActivity() {
         checkPermission()
 
         doDriverAction(ActionType.START)
+
+
+        // ATTENTION: This was auto-generated to handle app links.
+        val appLinkIntent: Intent = intent
+        val appLinkAction: String? = appLinkIntent.action
+        val appLinkData: Uri? = appLinkIntent.data
     }
 
 //    private fun isServiceRunning(serviceClass: Class<*>): Boolean {

@@ -2,6 +2,11 @@ package kz.ascoa.embeserver
 
 import android.content.Context
 import android.media.ToneGenerator
+import android.os.Handler
+import android.os.Looper
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kz.ascoa.embeserver.Dividers.FIELD_DIVIDER
 import kz.ascoa.embeserver.Dividers.VALUE_DIVIDER
 import java.net.InetSocketAddress;
@@ -51,6 +56,9 @@ class WSServer(
 
     override fun onClose(conn: WebSocket?, code: Int, reason: String?, remote: Boolean) {
         // Some actions
+        Handler(Looper.getMainLooper()).postDelayed({
+            this.start()
+        }, 1000)
     }
 
     /**
@@ -79,6 +87,7 @@ class WSServer(
                 reader?.readEPC(0)
                 isContinueReading = false
                 reader?.isContinueReading = isContinueReading
+                Thread.sleep(50)
                 sendTagReadResult(conn)
             }
 
@@ -86,10 +95,7 @@ class WSServer(
                 isContinueReading = true
                 reader?.isContinueReading = isContinueReading
                 reader?.readEPC(1)
-                while(isContinueReading){
-                    sendTagReadResult(conn)
-                    Thread.sleep(50)
-                }
+                readTagsUntilCancel(conn)
             }
 
             WSCommands.SET_POWER -> {
@@ -109,9 +115,21 @@ class WSServer(
         }
     }
 
+    private fun readTagsUntilCancel(conn: WebSocket?){
+        GlobalScope.launch {
+            while(isContinueReading){
+                sendTagReadResult(conn)
+                delay(50)
+            }
+            reader?.deviceDisconnect()
+        }
+    }
+
     private fun sendTagReadResult(conn: WebSocket?) {
         var resultTagList = reader?.getAndClearTagList()
-        val tagString = resultTagList?.joinToString(separator = VALUE_DIVIDER)
+        // Select EPC from each list item and concatenate into string
+        val epcList = resultTagList?.map { it?._EPC }
+        val tagString = epcList?.joinToString( separator = VALUE_DIVIDER)
         var resultString =
             "${Responses.GOT_EPC}${FIELD_DIVIDER}${tagString}"
         conn?.send(resultString)

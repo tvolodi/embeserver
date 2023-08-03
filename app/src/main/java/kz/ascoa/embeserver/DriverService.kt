@@ -138,7 +138,7 @@ class DriverService : Service() {
                     webSocketServer.start()
 
                 } catch (e : Exception) {
-
+                    Toast.makeText(serviceContext, "WS Service Error:${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
             t.start()

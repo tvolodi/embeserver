@@ -11,6 +11,8 @@ import com.pda.rfid.uhf.Tag6C
 import com.pda.rfid.uhf.UHF
 import com.pda.rfid.uhf.UHFReader
 import com.port.Adapt
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.lang.Exception
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.pow
@@ -127,13 +129,21 @@ class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator
     }
 
     fun readEPC(mode: Int) {
-        deviceConnect()
-        while(isContinueReading){
+        if(mode == 0) {
+            deviceConnect()
             var result = UHFReader._Tag6C.GetEPC(1, mode)
-            Thread.sleep(50)
-            if(mode == 0) break
+            while(isContinueReading){
+                Thread.sleep(50)
+                if(mode == 0) break
+            }
+            deviceDisconnect()
+        } else {
+            deviceConnect()
+            var result = UHFReader._Tag6C.GetEPC(1, mode)
         }
-        deviceDisconnect()
+
+
+
     }
 
     fun getTagDistance(): Int {

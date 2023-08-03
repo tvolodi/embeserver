@@ -10,9 +10,20 @@
         //     alert("WebSocket is supported by your Browser!");
         // }
 
+        let connString = "ws://localhost:38301/"
+
         let ws = {}
 
         let isOpened = false;
+
+        let tagList = [] // tag: qnt
+        tagList.push(
+            {
+                tagCode: 11111,
+                readQnt: 0
+            }
+        )
+
 		
 //		document.addEventListener('keydown', (event) => {
 //			const name = event.key;
@@ -41,10 +52,14 @@
             list.appendChild(entry);        
         }
 
+        function setRemoteConnString() {
+            connString = "ws://192.168.1.71:38301/"
+        }
+
         function connectWS() {
             
             // Let us open a web socket
-            ws = new WebSocket("ws://localhost:38301/");
+            ws = new WebSocket(connString);
 
             ws.onopen = function () {
 
@@ -59,20 +74,51 @@
                 const receivedMsg = evt.data;
                 const messageArr = receivedMsg.split("::");
                 const operationName = messageArr[0];
+                // alert(operationName)
                 switch(operationName) {
+                    
                     case "got_epc":
-                        addItem(messageArr[1]);
+                        
+                        if(messageArr.length >= 2) {
+                            const tagCodes = messageArr[1]
+                            const tagCodeArr = tagCodes.split("|")
+                            // alert("tag qnt = " + tagCodeArr.length)
+                            for(let j = 0; j < tagCodeArr.length; j++ ){
+                                tagCode = tagCodeArr[j]
+                                let listItem = tagList.find(item => item.tagCode == tagCode)
+                                if(listItem != null) {
+                                    listItem.readQnt++
+                                } else {
+                                    tagList.push({ tagCode: tagCode, readQnt: 1 })
+                                }                                
+                            }
+                            buildTable()
+                        }
+
+
+                        // addItem(messageArr[1]);
                     break;
                     default:
                 }
-                alert("Message is received: " + received_msg);
+                // alert("Message is received: " + received_msg);
             };
 
             ws.onclose = function () {
 
                 // websocket is closed.
+                isOpened = false
                 alert("Connection is closed...");
             };
+        }
+
+        function launchApp () {
+            const url = "intent://www.vt-ptm.org/#Intent;"+
+                        "schema=https;"+
+                        //"package=kz.ascoa.embeserver.DriverService;"+
+                        "action=android.intent.action.VIEW;"+
+                        // "category=;"+
+                        "end"
+            window.location.replace(url)
         }
 		
 		function getTagDistance(){
@@ -91,12 +137,48 @@
 		   ws.send("stop_reading")
 		}
 
+        function buildTable(){
+
+            let tbl = document.getElementById("tag_table")
+            if(tbl != null) tbl.remove()
+
+            tbl = document.createElement("table")
+            tbl.setAttribute('id', 'tag_table')
+            // if(tbl == null) {
+            //     tbl = tblNew
+            // } else {
+            //     tbl.replaceWith(tblNew)
+            // }
+            
+            const tblBody = document.createElement("tbody")
+            for(let i = 0; i < tagList.length; i++){
+
+                const tagInfo = tagList[i]
+
+                const row = document.createElement("tr")
+                const col1Cell = document.createElement("td")
+                const col1CellValue = document.createTextNode(tagInfo.tagCode)
+                col1Cell.appendChild(col1CellValue)
+                row.appendChild(col1Cell)
+                const col2Cell = document.createElement("td")
+                const col2CellValue = document.createTextNode(tagInfo.readQnt)
+                col2Cell.appendChild(col2CellValue)
+                row.appendChild(col2Cell)
+                tblBody.appendChild(row)
+            }
+            tbl.appendChild(tblBody)
+            document.body.appendChild(tbl)
+        }
+
         
     </script>
 
 </head>
 
 <body>
+    <div id="remote_url">
+        <a href="javascript:setRemoteConnString()">Set remote URL</a>
+    </div>
     <div id="sse">
         <a href="javascript:connectWS()">Connect to WS Server</a>
     </div>
@@ -115,10 +197,19 @@
     <div id="get_tag_distance">
         <a href="javascript:getTagDistance()">Get Distance to Tag</a>
     </div>
+    <div id="launch_app">
+        <a href="javascript:launchApp()">Launch Driver App</a>
+        <a href="intent://vt-ptm.org/#Intent;scheme=https;action=android.intent.action.VIEW;end"> Launch 2 </a>
+    </div>
+    
 
 
-    <div id="add_tag_list_item">
+    <!-- <div id="add_tag_list_item">
         <a href="javascript:addItem('tag')">Add item a Tag</a>
+    </div> -->
+
+    <div id="build_table">
+        <a href="javascript:buildTable()">Build Tag Table</a>
     </div>
 
     <table id="taglist">
