@@ -1,4 +1,4 @@
-package com.tvolodi.embeserver;
+package kz.ascoa.embeserver;
 
 public enum ServiceStateType {
     STARTED,

@@ -1,4 +1,4 @@
-package com.tvolodi.embeserver
+package kz.ascoa.embeserver
 
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
