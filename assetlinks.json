@@ -1,0 +1,9 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "kz.ascoa.embeserver",
+    "sha256_cert_fingerprints":
+    ["80:EB:1B:C1:2A:86:09:D2:28:43:CF:F7:F1:56:8A:41:4A:D7:5E:21:8F:92:50:35:4D:B4:FA:1F:FA:5C:C1:F6"]
+  }
+}]
