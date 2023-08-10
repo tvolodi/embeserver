@@ -36,10 +36,15 @@ android {
     buildFeatures {
         viewBinding true
     }
-
     packagingOptions {
-        exclude 'META-INF/*'
+        jniLibs {
+            excludes += ['META-INF/*']
+        }
+        resources {
+            excludes += ['META-INF/*']
+        }
     }
+
 }
 
 dependencies {
