@@ -9,17 +9,26 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.ui.AppBarConfiguration
 import com.tvolodi.embeserver.databinding.ActivityMainBinding
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.drafts.Draft
 import org.java_websocket.handshake.ServerHandshake
+import java.io.File
 import java.net.InetSocketAddress
 import java.net.URI
 import java.net.URISyntaxException
@@ -79,6 +88,10 @@ class MainActivity : AppCompatActivity() {
             doDriverAction(ActionType.STOP)
         }
 
+        mainActivity.updateBtn.setOnClickListener { view ->
+            updateAction()
+        }
+
         checkPermission()
 
         doDriverAction(ActionType.START)
@@ -88,6 +101,21 @@ class MainActivity : AppCompatActivity() {
         val appLinkIntent: Intent = intent
         val appLinkAction: String? = appLinkIntent.action
         val appLinkData: Uri? = appLinkIntent.data
+    }
+
+    fun updateAction() {
+        lifecycleScope.launch {
+            val httpClient = HttpClient()
+            val response = httpClient.get("https://www.vt-ptm.org/files/app-release.apk")
+            val fileBodyBytes = response.body<ByteArray>()
+
+            val downloadDir = Environment.DIRECTORY_DOWNLOADS
+
+
+            val apkFile = File.createTempFile("", "Downloads")
+            apkFile.writeBytes(fileBodyBytes)
+
+        }
     }
 
 //    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
