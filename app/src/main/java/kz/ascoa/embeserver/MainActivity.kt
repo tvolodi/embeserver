@@ -21,7 +21,9 @@ import androidx.navigation.ui.AppBarConfiguration
 import com.tvolodi.embeserver.databinding.ActivityMainBinding
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.onDownload
 import io.ktor.client.request.get
+import io.ktor.util.cio.writeChannel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private var clickTwoTime : Long = 0L
 
     private val REQUEST_READ_PHONE_STATE = 1
+    private val REQUEST_WRITE_EXTERNAL_STORAGE = 1
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     lateinit var mainActivity: ActivityMainBinding
@@ -105,21 +108,35 @@ class MainActivity : AppCompatActivity() {
 
     fun updateAction() {
         lifecycleScope.launch {
-            val httpClient = HttpClient()
-            val response = httpClient.get("https://www.vt-ptm.org/files/app-release.apk")
-            val fileBodyBytes = response.body<ByteArray>()
+            HttpClient().use {
+                try{
+                    val response = it.get("https://www.vt-ptm.org/files/app-release.apk"){
+                        onDownload { bytesSentTotal, contentLength ->
+                            runOnUiThread{
+                                Toast.makeText(activityContext, "bytesSentTotal: ${bytesSentTotal}; contentLength:${contentLength}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    // "https://www.vt-ptm.org/files/app-release.apk")
 
-            val downloadDir = Environment.DIRECTORY_DOWNLOADS
+                    val fileBodyBytes = response.body<ByteArray>()
+
+                    val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
 
 
-            val apkFile = File(downloadDir, "app-release.apk")
-            val isExists = apkFile.exists()
-            if (isExists) {
-                val isDeleteSuccess = apkFile.delete()
+                    val apkFile = File(downloadDir, "embeserver.apk")
+                    val isExists = apkFile.exists()
+                    if (isExists) {
+                        val isDeleteSuccess = apkFile.delete()
+                    }
+
+                    apkFile.writeBytes(fileBodyBytes)
+                } catch (e: Exception) {
+                    runOnUiThread{
+                        Toast.makeText(activityContext, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
-
-            apkFile.writeBytes(fileBodyBytes)
-
         }
     }
 
@@ -146,6 +163,14 @@ class MainActivity : AppCompatActivity() {
 //    }
 
     private fun checkPermission() {
+        val fileWritePermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        if (fileWritePermission != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this,
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                REQUEST_WRITE_EXTERNAL_STORAGE
+            )
+        }
+
         val statePermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
         if(statePermission != PackageManager.PERMISSION_GRANTED){
             ActivityCompat.requestPermissions(this,
