@@ -112,7 +112,12 @@ class MainActivity : AppCompatActivity() {
             val downloadDir = Environment.DIRECTORY_DOWNLOADS
 
 
-            val apkFile = File.createTempFile("", "Downloads")
+            val apkFile = File(downloadDir, "app-release.apk")
+            val isExists = apkFile.exists()
+            if (isExists) {
+                val isDeleteSuccess = apkFile.delete()
+            }
+
             apkFile.writeBytes(fileBodyBytes)
 
         }
