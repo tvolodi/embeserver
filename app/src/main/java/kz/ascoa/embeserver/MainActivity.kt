@@ -6,6 +6,7 @@ import android.Manifest
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -15,6 +16,7 @@ import android.view.KeyEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.ui.AppBarConfiguration
@@ -43,6 +45,9 @@ class MainActivity : AppCompatActivity() {
 
     private val REQUEST_READ_PHONE_STATE = 1
     private val REQUEST_WRITE_EXTERNAL_STORAGE = 1
+    private val REQUEST_INSTALL_PACKAGES = 1
+    private val REQUEST_REQUEST_INSTALL_PACKAGES = 1
+
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     lateinit var mainActivity: ActivityMainBinding
@@ -131,6 +136,30 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     apkFile.writeBytes(fileBodyBytes)
+
+                    var apkUri = FileProvider.getUriForFile(activityContext, "${activityContext.packageName}.provider", apkFile)
+
+                    val packageManager = activityContext.packageManager
+                    val canRequestInstall = packageManager.canRequestPackageInstalls()
+                    if (!canRequestInstall) {
+                        activityContext.startActivity( Intent(
+                            android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:" + activityContext.packageName
+                                    //packageManager.getPackageInfo(activityContext.p)
+                            )
+                        ))
+                        return@launch
+                    }
+
+                    val packageInstaller = packageManager.packageInstaller
+                    val sessionParams = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+                    val sessionId = packageInstaller.createSession(sessionParams)
+                    val session = packageInstaller.openSession(sessionId)
+
+                    val packageInSession = session.openWrite(activityContext.packageName, 0, -1)
+                    val input = activityContext.contentResolver.openInputStream()
+
+
                 } catch (e: Exception) {
                     runOnUiThread{
                         Toast.makeText(activityContext, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -168,6 +197,22 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this,
                 arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
                 REQUEST_WRITE_EXTERNAL_STORAGE
+            )
+        }
+
+        val installPackagePermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.INSTALL_PACKAGES)
+        if (installPackagePermission != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this,
+                arrayOf(Manifest.permission.INSTALL_PACKAGES),
+                REQUEST_INSTALL_PACKAGES
+            )
+        }
+
+        val requestInstallPackagePermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.REQUEST_INSTALL_PACKAGES)
+        if (requestInstallPackagePermission != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this,
+                arrayOf(Manifest.permission.REQUEST_INSTALL_PACKAGES),
+                REQUEST_REQUEST_INSTALL_PACKAGES
             )
         }
 
