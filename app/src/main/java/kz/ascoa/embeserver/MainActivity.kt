@@ -3,15 +3,13 @@ package kz.ascoa.embeserver
 // import org.java_websocket.drafts.Draft_10;
 
 import android.Manifest
-import android.app.ActivityManager
-import android.content.Context
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
-import android.util.Log
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -22,20 +20,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.ui.AppBarConfiguration
 import com.tvolodi.embeserver.databinding.ActivityMainBinding
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.plugins.onDownload
-import io.ktor.client.request.get
-import io.ktor.util.cio.writeChannel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 import org.java_websocket.client.WebSocketClient
-import org.java_websocket.drafts.Draft
-import org.java_websocket.handshake.ServerHandshake
 import java.io.File
-import java.net.InetSocketAddress
 import java.net.URI
-import java.net.URISyntaxException
 
 class MainActivity : AppCompatActivity() {
 
@@ -59,7 +48,6 @@ class MainActivity : AppCompatActivity() {
     val activityContext = this
 
     lateinit var hopelandRfidReader: HopelandRfidReader
-
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return super.onKeyDown(keyCode, event)
@@ -102,8 +90,8 @@ class MainActivity : AppCompatActivity() {
 
         checkPermission()
 
-        doDriverAction(ActionType.START)
-
+        // Start foreground service
+        // doDriverAction(ActionType.START)
 
         // ATTENTION: This was auto-generated to handle app links.
         val appLinkIntent: Intent = intent
@@ -112,84 +100,101 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun updateAction() {
+        val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val apkFile = File(downloadDir, "embeserver.apk")
+        var apkUri = FileProvider.getUriForFile(activityContext, "${activityContext.packageName}.provider", apkFile)
+
         lifecycleScope.launch {
             HttpClient().use {
-                try{
-                    val response = it.get("https://www.vt-ptm.org/files/app-release.apk"){
-                        onDownload { bytesSentTotal, contentLength ->
-                            runOnUiThread{
-                                Toast.makeText(activityContext, "bytesSentTotal: ${bytesSentTotal}; contentLength:${contentLength}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                    // "https://www.vt-ptm.org/files/app-release.apk")
+                try {
+//                    val response = it.get("https://www.vt-ptm.org/files/app-release.apk"){
+//                        onDownload { bytesSentTotal, contentLength ->
+//                            runOnUiThread{
+//                                Toast.makeText(activityContext, "bytesSentTotal: ${bytesSentTotal}; contentLength:${contentLength}", Toast.LENGTH_SHORT).show()
+//                            }
+//                        }
+//                    }
+//                    // "https://www.vt-ptm.org/files/app-release.apk")
+//
+//                    val fileBodyBytes = response.body<ByteArray>()
 
-                    val fileBodyBytes = response.body<ByteArray>()
-
-                    val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-
-
-                    val apkFile = File(downloadDir, "embeserver.apk")
-                    val isExists = apkFile.exists()
-                    if (isExists) {
-                        val isDeleteSuccess = apkFile.delete()
-                    }
-
-                    apkFile.writeBytes(fileBodyBytes)
-
-                    var apkUri = FileProvider.getUriForFile(activityContext, "${activityContext.packageName}.provider", apkFile)
-
-                    val packageManager = activityContext.packageManager
-                    val canRequestInstall = packageManager.canRequestPackageInstalls()
-                    if (!canRequestInstall) {
-                        activityContext.startActivity( Intent(
-                            android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                            Uri.parse("package:" + activityContext.packageName
-                                    //packageManager.getPackageInfo(activityContext.p)
-                            )
-                        ))
-                        return@launch
-                    }
-
-                    val packageInstaller = packageManager.packageInstaller
-                    val sessionParams = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-                    val sessionId = packageInstaller.createSession(sessionParams)
-                    val session = packageInstaller.openSession(sessionId)
-
-                    val packageInSession = session.openWrite(activityContext.packageName, 0, -1)
-                    val input = activityContext.contentResolver.openInputStream()
-
-
+//                    val isExists = apkFile.exists()
+//                    if (isExists) {
+//                        val isDeleteSuccess = apkFile.delete()
+//                    }
+//
+//                    apkFile.writeBytes(fileBodyBytes)
                 } catch (e: Exception) {
-                    runOnUiThread{
-                        Toast.makeText(activityContext, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    runOnUiThread {
+                        Toast.makeText(activityContext, "Error: ${e.message}", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 }
             }
         }
+
+        val packageManager = activityContext.packageManager
+        val canRequestInstall = packageManager.canRequestPackageInstalls()
+        if (!canRequestInstall) {
+            activityContext.startActivity( Intent(
+                android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:" + activityContext.packageName
+                        //packageManager.getPackageInfo(activityContext.p)
+                )
+            ))
+            return
+        }
+
+        try{
+            val packageInstaller = packageManager.packageInstaller
+            val sessionParams = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+            val sessionId = packageInstaller.createSession(sessionParams)
+            val session = packageInstaller.openSession(sessionId)
+
+            runBlocking {
+                launch { addApkToInstallSession(session, apkUri) }
+            }
+
+            val mainActivityClass = activityContext.javaClass
+            val intent = Intent(activityContext, mainActivityClass);
+            intent.setAction("com.example.android.apis.content.SESSION_API_PACKAGE_INSTALLED")
+            val pendingIntent = PendingIntent.getActivity(
+                activityContext,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+            val statusReceiver = pendingIntent.intentSender
+
+            if (statusReceiver != null) {
+                session.commit(statusReceiver)
+            }
+        } catch (e: Exception){
+            runOnUiThread {
+                Toast.makeText(activityContext, "Error: ${e.message}", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+
     }
 
-//    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
-//        try{
-//            val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-//            for (service in manager.getRunningServices(
-//                Int.MAX_VALUE
-//            )){
-//                if(serviceClass.name == service.service.className) {
-//                    return true
-//                }
-//            }
-//        } catch (e: Exception) {
-//            return  false
-//        }
-//
-//        return false
-//    }
-
-//    private fun readTag() {
-//        var message = "read_tag"
-//        testWebSocketClient.send(message)
-//    }
+    private suspend fun addApkToInstallSession(
+        session: PackageInstaller.Session,
+        apkUri: Uri
+    ) {
+        val packageInSessionOS = session.openWrite(activityContext.packageName, 0, -1)
+        val inputStream = activityContext.contentResolver.openInputStream(apkUri)
+        try {
+            if (inputStream != null) {
+                inputStream.copyTo(packageInSessionOS)
+            } else {
+                throw java.lang.Exception("APK input stream is null")
+            }
+        } finally {
+            packageInSessionOS.close()
+            inputStream?.close()
+        }
+    }
 
     private fun checkPermission() {
         val fileWritePermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
