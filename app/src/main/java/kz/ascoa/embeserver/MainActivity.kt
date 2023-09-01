@@ -18,6 +18,7 @@ import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.ui.AppBarConfiguration
+import com.dcastalia.localappupdate.DownloadApk
 import com.tvolodi.embeserver.databinding.ActivityMainBinding
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.launch
@@ -25,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import org.java_websocket.client.WebSocketClient
 import java.io.File
 import java.net.URI
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -100,6 +102,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun updateAction() {
+
+        val url = "https://www.vt-ptm.org/files/app-release.apk"
+        val downloadApk = DownloadApk(this@MainActivity)
+        downloadApk.startDownloadingApk(url);
+
+        if (url != "") return
+
         val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val apkFile = File(downloadDir, "embeserver.apk")
         var apkUri = FileProvider.getUriForFile(activityContext, "${activityContext.packageName}.provider", apkFile)
