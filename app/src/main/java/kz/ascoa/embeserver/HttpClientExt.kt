@@ -11,25 +11,25 @@ import kotlinx.coroutines.flow.flow
 import java.io.File
 import java.io.OutputStream
 
-suspend fun HttpClient.downloadFile(file: OutputStream, url: String) : Flow<DownloadResult>? {
-
-    var httpClient = this;
-
-        try {
-            val response = httpClient.get("https://www.vt-ptm.org/files/app-release.apk")
-            //{
-//                 onDownload{ bytesTotal, contentLength ->
-            //}
-            val fileBodyBytes = response.body<ByteArray>()
-            val apkFile = File.createTempFile("", "Downloads")
-            apkFile.writeBytes(fileBodyBytes)
-
-        } catch (e: TimeoutCancellationException) {
-//            emit(DownloadResult.Error("Connection timed out", e))
-        } catch (t: Throwable) {
-//            emit(DownloadResult.Error("Failed to connect"))
-        }
-
-    return null
-
-}
+//suspend fun HttpClient.downloadFile(file: OutputStream, url: String) : Flow<DownloadResult>? {
+//
+//    var httpClient = this;
+//
+//        try {
+//            val response = httpClient.get("https://www.vt-ptm.org/files/app-release.apk")
+//            //{
+////                 onDownload{ bytesTotal, contentLength ->
+//            //}
+//            val fileBodyBytes = response.body<ByteArray>()
+//            val apkFile = File.createTempFile("", "Downloads")
+//            apkFile.writeBytes(fileBodyBytes)
+//
+//        } catch (e: TimeoutCancellationException) {
+////            emit(DownloadResult.Error("Connection timed out", e))
+//        } catch (t: Throwable) {
+////            emit(DownloadResult.Error("Failed to connect"))
+//        }
+//
+//    return null
+//
+//}

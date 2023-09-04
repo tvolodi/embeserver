@@ -6,11 +6,11 @@ plugins {
 
 android {
 
-    namespace 'com.tvolodi.embeserver'
+    namespace 'kz.ascoa.embeserver'
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.tvolodi.embeserver"
+        applicationId "kz.ascoa.embeserver"
         minSdk 27
         //noinspection ExpiredTargetSdkVersion
         targetSdk 28
@@ -66,6 +66,8 @@ dependencies {
 //    implementation 'androidx.core:core-ktx:+'
 //    implementation 'androidx.core:core-ktx:+'
     implementation 'org.java-websocket:Java-WebSocket:1.5.3'
+    implementation 'androidx.preference:preference-ktx:1.2.1'
+    implementation 'androidx.preference:preference:1.2.0'
     // implementation 'androidx.core:core-ktx:+'
 //    implementation 'androidx.core:core-ktx:+'
     testImplementation 'junit:junit:4.13.2'
