@@ -10,35 +10,12 @@
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="@string/web_socket_port_title"
-            app:key="web_socket_port_title"
+            app:key="web_socket_port"
             app:useSimpleSummaryProvider="true" />
         <EditTextPreference
-            app:key="update_app_url_title"
+            app:key="update_app_url"
             app:title="@string/update_app_url_title"
             app:useSimpleSummaryProvider="true" />
-
-        <ListPreference
-            app:defaultValue="reply"
-            app:entries="@array/reply_entries"
-            app:entryValues="@array/reply_values"
-            app:key="reply"
-            app:title="@string/reply_title"
-            app:useSimpleSummaryProvider="true" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory app:title="@string/sync_header">
-
-        <SwitchPreferenceCompat
-            app:key="sync"
-            app:title="@string/sync_title" />
-
-        <SwitchPreferenceCompat
-            app:dependency="sync"
-            app:key="attachment"
-            app:summaryOff="@string/attachment_summary_off"
-            app:summaryOn="@string/attachment_summary_on"
-            app:title="@string/attachment_title" />
 
     </PreferenceCategory>
 

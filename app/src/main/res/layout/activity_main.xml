@@ -13,47 +13,56 @@
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true">
 
-        <EditText
-            android:id="@+id/editTextText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="text"
-            android:text="Start" />
-
-        <ImageButton
+        <Button
             android:id="@+id/startDriverBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:srcCompat="@android:drawable/ic_input_add" />
+            android:backgroundTint="#4CAF50"
+            android:text="Start" />
 
-        <EditText
-            android:id="@+id/editTextText2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="text"
-            android:text="Stop" />
-
-        <ImageButton
+        <Button
             android:id="@+id/stopDriverBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:srcCompat="@android:drawable/ic_delete" />
-
-        <EditText
-            android:id="@+id/editTextText3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="text"
-            android:text="Update" />
+            android:backgroundTint="#F44336"
+            android:text="Stop" />
 
         <Button
             android:id="@+id/updateBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Update" />
+
+        <Button
+            android:id="@+id/settingsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#2196F3"
+            android:text="Settings" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="255dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <androidx.fragment.app.FragmentContainerView
+                    android:id="@+id/fragmentContainerView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <Button
+                    android:id="@+id/exitButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="#FFEB3B"
+                    android:text="Exit"
+                    android:textColor="#000000" />
+            </LinearLayout>
+        </ScrollView>
 
     </com.google.android.material.appbar.AppBarLayout>
 

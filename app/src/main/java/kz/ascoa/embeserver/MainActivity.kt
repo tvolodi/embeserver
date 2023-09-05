@@ -3,31 +3,24 @@ package kz.ascoa.embeserver
 // import org.java_websocket.drafts.Draft_10;
 
 import android.Manifest
-import android.app.PendingIntent
+import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
-import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import androidx.preference.PreferenceManager
-import androidx.preference.PreferenceManager.getDefaultSharedPreferences
+import android.util.Patterns
 import android.view.KeyEvent
-import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat
-import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
-import androidx.navigation.ui.AppBarConfiguration
+import androidx.fragment.app.add
+import androidx.fragment.app.commit
+import androidx.preference.PreferenceManager
 import com.dcastalia.localappupdate.DownloadApk
 import kz.ascoa.embeserver.databinding.ActivityMainBinding
-import io.ktor.client.HttpClient
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import org.java_websocket.client.WebSocketClient
-import java.io.File
-import java.net.URI
 
 
 class MainActivity : AppCompatActivity() {
@@ -71,6 +64,8 @@ class MainActivity : AppCompatActivity() {
         return true // stop propagate event further
     }
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
@@ -96,6 +91,14 @@ class MainActivity : AppCompatActivity() {
             updateAction()
         }
 
+        mainActivity.settingsButton.setOnClickListener { view ->
+            settingsAction()
+        }
+
+        mainActivity.exitButton.setOnClickListener { view ->
+            finish()
+        }
+
         checkPermission()
 
         // Start foreground service
@@ -113,6 +116,20 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun settingsAction() {
+        val fragments = supportFragmentManager.fragments
+        if(fragments.count() == 0){
+            supportFragmentManager.commit {
+                setReorderingAllowed(true)
+                add<SettingsFragment>(R.id.fragmentContainerView)
+            }
+        } else {
+            supportFragmentManager.commit {
+                remove(fragments[0])
+            }
+        }
+    }
+
     fun updateAction() {
 
         val requestInstallPackagePermission =
@@ -126,9 +143,50 @@ class MainActivity : AppCompatActivity() {
         }
 
         val url = "https://www.vt-ptm.org/files/app-release.apk"
+        val preferences = this.getPreferences(Context.MODE_PRIVATE)?: return
+        val url2 = preferences.getString("update_app_url", "")
+        val validationResult = Patterns.WEB_URL.matcher(url2).matches()
+        if (validationResult == false) {
+            showAlert("Set correct download url")
+            return
+        }
+
         val downloadApk = DownloadApk(this@MainActivity)
         downloadApk.startDownloadingApk(url);
 
+    }
+
+    private fun showAlert(message: String) {
+        // Create the object of AlertDialog Builder class
+        // Create the object of AlertDialog Builder class
+        val builder: AlertDialog.Builder = AlertDialog.Builder(this@MainActivity)
+
+        // Set the message show for the Alert time
+        builder.setMessage(message)
+
+        // Set Alert Title
+        builder.setTitle("Alert!")
+
+        // Set Cancelable false for when the user clicks on the outside the Dialog Box then it will remain show
+
+        // Set Cancelable false for when the user clicks on the outside the Dialog Box then it will remain show
+        builder.setCancelable(false)
+
+        // Set the positive button with yes name Lambda OnClickListener method is use of DialogInterface interface.
+
+        // Set the positive button with yes name Lambda OnClickListener method is use of DialogInterface interface.
+        builder.setPositiveButton("OK",
+            DialogInterface.OnClickListener { dialog: DialogInterface?, which: Int ->
+                // When the user click yes button then app will close
+                dialog?.cancel();
+            } as DialogInterface.OnClickListener)
+
+
+        // Create the Alert dialog
+        val alertDialog: AlertDialog = builder.create()
+        // Show the Alert Dialog box
+        // Show the Alert Dialog box
+        alertDialog.show()
     }
 
     private fun checkPermission() {
