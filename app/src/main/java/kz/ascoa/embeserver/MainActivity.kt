@@ -8,19 +8,29 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Patterns
 import android.view.KeyEvent
-import androidx.activity.addCallback
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.add
 import androidx.fragment.app.commit
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
+import com.dcastalia.localappupdate.BuildConfig
 import com.dcastalia.localappupdate.DownloadApk
+import com.google.gson.JsonObject
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import kotlinx.coroutines.launch
 import kz.ascoa.embeserver.databinding.ActivityMainBinding
+import org.json.JSONObject
+import java.nio.charset.Charset
 
 
 class MainActivity : AppCompatActivity() {
@@ -101,6 +111,8 @@ class MainActivity : AppCompatActivity() {
 
         checkPermission()
 
+        checkForNewVersion()
+
         // Start foreground service
         doDriverAction(ActionType.START)
 
@@ -109,11 +121,48 @@ class MainActivity : AppCompatActivity() {
         val appLinkAction: String? = appLinkIntent.action
         val appLinkData: Uri? = appLinkIntent.data
 
-        var appUpdateUrl = preferences.getString("AppUpdateUrl", "")
-        if(appUpdateUrl == "") {
+    }
 
+    private fun checkForNewVersion() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(this) // this.getPreferences(Context.MODE_PRIVATE)?: return
+        val url = preferences.getString("update_app_url", "")
+        val appInfoUrl = url + "/embeserver.info.json"
+        var appVersionOnServer = ""
+        lifecycleScope.launch {
+            HttpClient().use {
+                try {
+                    val response = it.get(appInfoUrl){
+//                        onDownload { bytesSentTotal, contentLength ->
+//                            runOnUiThread{
+//                                Toast.makeText(activityContext, "bytesSentTotal: ${bytesSentTotal}; contentLength:${contentLength}", Toast.LENGTH_SHORT).show()
+//                            }
+//                        }
+                    }
+                    // "https://www.vt-ptm.org/files/app-release.apk")
+
+                    val fileBodyBytes = response.body<ByteArray>()
+                    val jsonBodyString = String(fileBodyBytes, Charset.defaultCharset())
+
+                    val jsonObj = JSONObject(jsonBodyString)
+                    appVersionOnServer = jsonObj.getString("version")
+
+                } catch (e: Exception) {
+                    runOnUiThread{
+                        showAlert(e.message)
+                        // Toast.makeText(activityContext, "Error on app version check: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         }
 
+        val packageName = activityContext.packageName
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            packageManager.getPackageInfo(packageName, 0)
+        }
+
+        val currAppVersion = packageInfo.versionName
     }
 
     private fun settingsAction() {
@@ -130,7 +179,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun updateAction() {
+    private fun validateDownloadUrl() {
+        val preferences = this.getPreferences(Context.MODE_PRIVATE)?: return
+        val url = preferences.getString("update_app_url", "")
+        val appApkUrl = url + "/embeserver.apk"
+        val validationResult = Patterns.WEB_URL.matcher(appApkUrl).matches()
+        if (validationResult == false) {
+            showAlert("Set correct download url")
+        }
+    }
+
+    private fun updateAction() {
 
         val requestInstallPackagePermission =
             ActivityCompat.checkSelfPermission(this, Manifest.permission.REQUEST_INSTALL_PACKAGES)
@@ -142,21 +201,15 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        val url = "https://www.vt-ptm.org/files/app-release.apk"
         val preferences = this.getPreferences(Context.MODE_PRIVATE)?: return
-        val url2 = preferences.getString("update_app_url", "")
-        val validationResult = Patterns.WEB_URL.matcher(url2).matches()
-        if (validationResult == false) {
-            showAlert("Set correct download url")
-            return
-        }
+        val url = preferences.getString("update_app_url", "")
+        val appApkUrl = url + "/embeserver.apk"
 
         val downloadApk = DownloadApk(this@MainActivity)
-        downloadApk.startDownloadingApk(url);
-
+        downloadApk.startDownloadingApk(appApkUrl);
     }
 
-    private fun showAlert(message: String) {
+    private fun showAlert(message: String?) {
         // Create the object of AlertDialog Builder class
         // Create the object of AlertDialog Builder class
         val builder: AlertDialog.Builder = AlertDialog.Builder(this@MainActivity)
@@ -168,11 +221,7 @@ class MainActivity : AppCompatActivity() {
         builder.setTitle("Alert!")
 
         // Set Cancelable false for when the user clicks on the outside the Dialog Box then it will remain show
-
-        // Set Cancelable false for when the user clicks on the outside the Dialog Box then it will remain show
         builder.setCancelable(false)
-
-        // Set the positive button with yes name Lambda OnClickListener method is use of DialogInterface interface.
 
         // Set the positive button with yes name Lambda OnClickListener method is use of DialogInterface interface.
         builder.setPositiveButton("OK",
