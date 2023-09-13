@@ -6,16 +6,16 @@ plugins {
 
 android {
 
-    namespace 'com.tvolodi.embeserver'
+    namespace 'kz.ascoa.embeserver'
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.tvolodi.embeserver"
+        applicationId "kz.ascoa.embeserver"
         minSdk 27
         //noinspection ExpiredTargetSdkVersion
-        targetSdk 27
+        targetSdk 28
         versionCode 1
-        versionName "1.0"
+        versionName "Hopeland RFID"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -49,6 +49,7 @@ android {
 
 dependencies {
 
+    implementation "io.ktor:ktor-client-android:2.3.3"
     implementation 'androidx.core:core-ktx:1.8.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.5.0'
@@ -65,10 +66,13 @@ dependencies {
 //    implementation 'androidx.core:core-ktx:+'
 //    implementation 'androidx.core:core-ktx:+'
     implementation 'org.java-websocket:Java-WebSocket:1.5.3'
+    implementation 'androidx.preference:preference-ktx:1.2.1'
+    implementation 'androidx.preference:preference:1.2.0'
     // implementation 'androidx.core:core-ktx:+'
 //    implementation 'androidx.core:core-ktx:+'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'com.github.Piashsarker:AndroidAppUpdateLibrary:1.0.4'
 }

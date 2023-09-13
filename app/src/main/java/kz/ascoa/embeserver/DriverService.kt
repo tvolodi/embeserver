@@ -19,7 +19,7 @@ import android.os.Looper
 import android.os.Message
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import com.tvolodi.embeserver.R
+// import kz.ascoa.embeserver.R
 
 import io.ktor.server.netty.NettyApplicationEngine
 import java.net.InetSocketAddress
@@ -195,7 +195,7 @@ class DriverService : Service() {
             val intentMainLanding = Intent(this, MainActivity::class.java)
             val pendingIntent =
                 PendingIntent.getActivity(this, 0, intentMainLanding, 0)
-            iconNotification = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+            // iconNotification = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
             if (mNotificationManager == null) {
                 mNotificationManager =
                     this.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -216,28 +216,28 @@ class DriverService : Service() {
             }
             val builder = NotificationCompat.Builder(this, "service_channel")
 
-            builder.setContentTitle(
-                StringBuilder(resources.getString(R.string.app_name)).append(" service is running")
-                    .toString()
+            builder.setContentTitle( "embeserver service is running"
+//                StringBuilder(resources.getString(R.string.app_name)).append(" service is running")
+//                    .toString()
             )
-                .setTicker(
-                    StringBuilder(resources.getString(R.string.app_name)).append("service is running")
-                        .toString()
+                .setTicker( "embeserver service is running"
+//                    StringBuilder(resources.getString(R.string.app_name)).append("service is running")
+//                        .toString()
                 )
                 .setContentText("Touch to open") //                    , swipe down for more options.
-                .setSmallIcon(R.drawable.ic_service_notification)
+                // .setSmallIcon(R.drawable.ic_service_notification)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setWhen(0)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
 
-            iconNotification = BitmapFactory.decodeResource(resources,
-                R.drawable.ic_service_notification
-            )
-            if (iconNotification != null) {
-                builder.setLargeIcon(Bitmap.createScaledBitmap(iconNotification!!, 128, 128, false))
-            }
+//            iconNotification = BitmapFactory.decodeResource(resources,
+//                R.drawable.ic_service_notification
+//            )
+//            if (iconNotification != null) {
+//                builder.setLargeIcon(Bitmap.createScaledBitmap(iconNotification!!, 128, 128, false))
+//            }
 //            builder.color = resources.getColor(R.color.purple_200)
             notification = builder.build()
             startForeground(mNotificationId, notification)

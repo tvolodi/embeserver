@@ -1,0 +1,22 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/settings_header">
+
+        <EditTextPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:defaultValue="38301"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/web_socket_port_title"
+            app:key="web_socket_port"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:key="update_app_url"
+            app:title="@string/update_app_url_title"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
