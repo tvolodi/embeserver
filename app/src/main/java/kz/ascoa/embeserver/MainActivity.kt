@@ -144,8 +144,35 @@ class MainActivity : AppCompatActivity() {
                     val jsonBodyString = String(fileBodyBytes, Charset.defaultCharset())
 
                     val jsonObj = JSONObject(jsonBodyString)
-                    appVersionOnServer = jsonObj.getString("version")
+                    appVersionOnServer = jsonObj.getString("version_code")
 
+                    var currentVersionCode : Long
+                    var currentVersionName: String
+                    val packageName = activityContext.packageName
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val packageInfo = packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+                        currentVersionName = packageInfo.versionName
+                        currentVersionCode = packageInfo.longVersionCode
+                    } else {
+                        val packageInfo =  packageManager.getPackageInfo(packageName, 0)
+                        currentVersionName = packageInfo.versionName
+                        currentVersionCode = packageInfo.versionCode.toLong()
+                    }
+
+                    var versionCodeOnServer = appVersionOnServer.toLongOrNull()
+                    if(versionCodeOnServer == null) {
+                        runOnUiThread {
+                            showAlert("Invalid format for version code on server")
+                        }
+                    } else {
+                        if(versionCodeOnServer > currentVersionCode) {
+                            val currButtonText = mainActivity.updateBtn.text
+                            runOnUiThread{
+                                mainActivity.updateBtn.text = "$currButtonText (Can update: $versionCodeOnServer version)"
+                            }
+                        }
+                    }
                 } catch (e: Exception) {
                     runOnUiThread{
                         showAlert(e.message)
@@ -154,15 +181,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-
-        val packageName = activityContext.packageName
-        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
-        } else {
-            packageManager.getPackageInfo(packageName, 0)
-        }
-
-        val currAppVersion = packageInfo.versionName
     }
 
     private fun settingsAction() {
