@@ -1,4 +1,4 @@
-package kz.ascoa.embeserver;
+package kz.ascoa.embeserver.enums;
 
 public enum ActionType {
     START,

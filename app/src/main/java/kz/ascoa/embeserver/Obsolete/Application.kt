@@ -1,4 +1,4 @@
-package kz.ascoa.embeserver
+package kz.ascoa.embeserver.Obsolete
 
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application

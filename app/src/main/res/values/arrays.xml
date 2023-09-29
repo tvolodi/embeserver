@@ -9,4 +9,13 @@
         <item>reply</item>
         <item>reply_all</item>
     </string-array>
+
+    <string-array name="pref_device_model_option_labels">
+        <item>Hopeland 820</item>
+        <item>Zebra</item>
+    </string-array>
+    <string-array name="pref_device_model_option_values">
+        <item>pref_model_hopeland_value</item>
+        <item>pref_model_zebra_value</item>
+    </string-array>
 </resources>

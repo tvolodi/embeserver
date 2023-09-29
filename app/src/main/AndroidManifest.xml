@@ -10,7 +10,9 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-<!--    <uses-permission android:name="android.permission.INSTALL_PACKAGES" />-->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 
     <application
         android:allowBackup="true"
@@ -22,46 +24,57 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Embeserver"
         tools:targetApi="28">
-        <service
-            android:name="kz.ascoa.embeserver.DriverService"
-            android:enabled="true"
-            android:exported="false"></service>
         <activity
-            android:name="kz.ascoa.embeserver.MainActivity"
+            android:name=".view.TestReaderActivity"
+            android:exported="false"
+            android:label="@string/title_activity_test_reader"
+            android:theme="@style/Theme.Embeserver" />
+
+        <service
+            android:name=".DriverService"
+            android:enabled="true"
+            android:exported="false" />
+
+        <activity
+            android:name=".view.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Embeserver"
             android:noHistory="true"
-            >
+            android:theme="@style/Theme.Embeserver">
+<!--            <intent-filter>-->
+<!--                <action android:name="android.intent.action.MAIN" />-->
+
+<!--                <category android:name="android.intent.category.LAUNCHER" />-->
+<!--            </intent-filter>-->
             <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
                 <category android:name="android.intent.category.LAUNCHER" />
+
+                <data
+                    android:host="vt-ptm.org"
+                    android:scheme="http" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <category android:name="android.intent.category.LAUNCHER" />
+
                 <data
-                    android:scheme="http"
-                    android:host="vt-ptm.org" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.LAUNCHER" />
-                <data
-                    android:scheme="https"
-                    android:host="vt-ptm.org" />
+                    android:host="vt-ptm.org"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
 
         <provider
-            android:authorities="${applicationId}.provider"
             android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
@@ -69,21 +82,17 @@
                 android:resource="@xml/external_files" />
         </provider>
 
-
         <receiver
+            android:name=".DriverService"
             android:enabled="true"
-            android:name="kz.ascoa.embeserver.DriverService"
             android:exported="true">
             <intent-filter>
-
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-
             </intent-filter>
         </receiver>
-
     </application>
 
 </manifest>
