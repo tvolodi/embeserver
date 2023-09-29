@@ -6,7 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    tools:context="kz.ascoa.embeserver.MainActivity">
+    android:foregroundTint="#009688"
+    tools:context="kz.ascoa.embeserver.view.MainActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
@@ -28,6 +29,15 @@
             android:text="Stop" />
 
         <Button
+            android:id="@+id/minimizeButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#FFC107"
+            android:foregroundTint="#009688"
+            android:text="Minimize"
+            android:textColor="#3F51B5" />
+
+        <Button
             android:id="@+id/updateBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -40,29 +50,30 @@
             android:backgroundTint="#2196F3"
             android:text="Settings" />
 
-        <ScrollView
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/fragmentContainerView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/test_reader_button"
             android:layout_width="match_parent"
-            android:layout_height="255dp">
+            android:layout_height="wrap_content"
+            android:backgroundTint="#93918F"
+            android:text="Test Reader" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/testReaderFragmentContainerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
 
-                <androidx.fragment.app.FragmentContainerView
-                    android:id="@+id/fragmentContainerView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-
-                <Button
-                    android:id="@+id/exitButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:backgroundTint="#FFEB3B"
-                    android:text="Exit"
-                    android:textColor="#000000" />
-            </LinearLayout>
-        </ScrollView>
+        <Button
+            android:id="@+id/exitButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#FF5722"
+            android:text="Exit"
+            android:textColor="#000000" />
 
     </com.google.android.material.appbar.AppBarLayout>
 

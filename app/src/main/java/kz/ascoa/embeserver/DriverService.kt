@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.Build
@@ -19,9 +20,13 @@ import android.os.Looper
 import android.os.Message
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.preference.PreferenceManager
 // import kz.ascoa.embeserver.R
 
 import io.ktor.server.netty.NettyApplicationEngine
+import kz.ascoa.embeserver.enums.ActionType
+import kz.ascoa.embeserver.view.MainActivity
 import java.net.InetSocketAddress
 
 private const val name = "SPYSERVICE_KEY"
@@ -29,6 +34,8 @@ private const val key = "SPYSERVICE_STATE"
 
 private var ktorServer : NettyApplicationEngine? = null
 private var commandName : String? = ""
+
+var webSocketServer : WSServer? = null
 
 /**
  * https://betterprogramming.pub/what-is-foreground-service-in-android-3487d9719ab6
@@ -60,12 +67,12 @@ private var commandName : String? = ""
  */
 class DriverService : Service() {
 
-    private var serviceLooper: Looper? = null
+     private var serviceLooper: Looper? = null
     private var serviceHandler: ServiceHandler? = null;
 
     var serviceContext = this
 
-    var hopelandReader: HopelandRfidReader? = null
+    private var reader: IReadDevice? = null
     var wsThread: Thread? = null
 
     private var iconNotification: Bitmap? = null
@@ -75,6 +82,8 @@ class DriverService : Service() {
     private val mNotificationId = 123
 
     public val toneGenerator: ToneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+
+    var wsServerRunnable: RunnableContainer? = null
 
     /**
      * Use when service is binding service. We don't use it so return null - no binding.
@@ -118,42 +127,51 @@ class DriverService : Service() {
 
         if(intent.action == ActionType.START.name){
 
-            // Create message for handler and run KTor
-//            serviceHandler?.obtainMessage()?.also { msg: Message ->
-//                msg.arg1 = startId
-//
-//                serviceHandler?.sendMessage(msg)
-//            }
 
-            hopelandReader = HopelandRfidReader(this, toneGenerator)
-
-            // Run Web Socket Server in it's own thread
-            val t = Thread{
-
-                var webSocketServer : WSServer? = null
-                try{
-
-                    var socketAddress = InetSocketAddress("127.0.0.1", 38301)
-                    webSocketServer = WSServer(socketAddress, serviceContext, hopelandReader, toneGenerator)
-                    webSocketServer.start()
-
-                } catch (e : Exception) {
-                    Toast.makeText(serviceContext, "WS Service Error:${e.message}", Toast.LENGTH_LONG).show()
+            if(reader == null) {
+                val preferences = PreferenceManager.getDefaultSharedPreferences(this)
+                val device_model = preferences.getString("device_model", "")
+                when(device_model) {
+                    "pref_model_hopeland_value" -> {
+                        reader = HopelandRfidReader(this, toneGenerator, "Hopeland", OperationTypes.INVENTORY,  mutableListOf<String>(), "")
+                    }
+                    "pref_model_zebra_value" -> {
+                        reader = ZebraRfidReader(this, toneGenerator, "Zebra", OperationTypes.INVENTORY,  mutableListOf<String>(), "")
+                    }
+                    "" -> {
+                        Toast.makeText(this, "Device is not set in settings", Toast.LENGTH_LONG).show()
+                        return START_NOT_STICKY
+                    }
                 }
             }
-            t.start()
+
+            // Run Web Socket Server in it's own thread
+            val prefManager = PreferenceManager.getDefaultSharedPreferences(this)
+            val wsPort = prefManager.getString("web_socket_port", "38301")
+            var socketAddress = wsPort?.let { InetSocketAddress("127.0.0.1", it.toInt()) }
+            webSocketServer =
+                socketAddress?.let { WSServer(it, serviceContext, reader, toneGenerator, this) }
+            wsServerRunnable = RunnableContainer(webSocketServer!!)
+            val wsThread2 = Thread(wsServerRunnable)
+            wsThread2.start()
 
             // Show notification. Hopeland will now normally work in the service without it
             generateForegroundNotification()
-
-            // Update service state
-//            setServiceState(this, ServiceStateType.STARTED)
 
             // Inform OS to restart service at once
 //            return  START_NOT_STICKY
             return START_STICKY
         } else
         {
+            try {
+                reader?.deviceDisconnect()
+                wsServerRunnable?.shutdown()
+
+//                reader?.deviceDisconnect()
+//                reader = null
+            } catch (e: Exception) {
+                showAlert(this, e.message)
+            }
 
             stopForeground(true)
             stopSelf()
@@ -179,6 +197,10 @@ class DriverService : Service() {
 
             return START_NOT_STICKY
         }
+    }
+
+    fun showErrorAllert(message: String) {
+        showAlert(this, message)
     }
 
     /**
@@ -216,29 +238,23 @@ class DriverService : Service() {
             }
             val builder = NotificationCompat.Builder(this, "service_channel")
 
-            builder.setContentTitle( "embeserver service is running"
-//                StringBuilder(resources.getString(R.string.app_name)).append(" service is running")
-//                    .toString()
-            )
-                .setTicker( "embeserver service is running"
-//                    StringBuilder(resources.getString(R.string.app_name)).append("service is running")
-//                        .toString()
-                )
+            builder.setContentTitle( "embeserver service is running")
+                .setTicker( "embeserver service is running")
                 .setContentText("Touch to open") //                    , swipe down for more options.
-                // .setSmallIcon(R.drawable.ic_service_notification)
+                .setSmallIcon(R.drawable.ic_service_notification)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setWhen(0)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
 
-//            iconNotification = BitmapFactory.decodeResource(resources,
-//                R.drawable.ic_service_notification
-//            )
-//            if (iconNotification != null) {
-//                builder.setLargeIcon(Bitmap.createScaledBitmap(iconNotification!!, 128, 128, false))
-//            }
-//            builder.color = resources.getColor(R.color.purple_200)
+            iconNotification = BitmapFactory.decodeResource(resources,
+                R.drawable.ic_service_notification
+            )
+            if (iconNotification != null) {
+                builder.setLargeIcon(Bitmap.createScaledBitmap(iconNotification!!, 128, 128, false))
+            }
+            builder.color =  Color.YELLOW // resources.getColor(R.color.purple_200)
             notification = builder.build()
             startForeground(mNotificationId, notification)
         }
@@ -252,39 +268,21 @@ class DriverService : Service() {
 
         override fun handleMessage(msg: Message) {
 
-            Toast.makeText(context, "Ktor service starting", Toast.LENGTH_SHORT).show()
-            Toast.makeText(context, "Service started", Toast.LENGTH_SHORT).show()
-//
-//            ktorServer = embeddedServer(Netty, port=8080, host = "0.0.0.0", module = Application::module).start(wait = false)
-//            Toast.makeText(context, "Ktor service started", Toast.LENGTH_SHORT).show()
-
-//            Toast.makeText(context, "WS Service starting", Toast.LENGTH_SHORT).show()
-//            var webSocketServer : WSServer? = null
-//            try{
-//
-//                var socketAddress = InetSocketAddress("127.0.0.1", 38301)
-//                webSocketServer = WSServer(socketAddress, context)
-//                webSocketServer.start()
-//
-//                Toast.makeText(context, "WS Service started", Toast.LENGTH_SHORT).show()
-//
-//            } catch (e : Exception) {
-//                System.out.println(e.stackTrace)
-//            } finally {
-//                System.out.println(webSocketServer.toString())
-//            }
-
-//            hopelandReader.deviceConnect()
-
-//            if(commandName == ActionType.START.name)
-//
-//            else
-//                ktorServer?.stop(1000)
         }
 
     }
 
     private fun startService() {
 
+    }
+
+    class RunnableContainer (val wsServer: WSServer): Runnable {
+
+        fun shutdown() {
+            wsServer?.stop()
+        }
+        override fun run() {
+            wsServer?.start()
+        }
     }
 }

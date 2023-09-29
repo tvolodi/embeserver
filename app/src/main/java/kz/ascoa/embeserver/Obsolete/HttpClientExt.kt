@@ -1,4 +1,4 @@
-package kz.ascoa.embeserver
+package kz.ascoa.embeserver.Obsolete
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.HttpClientCall

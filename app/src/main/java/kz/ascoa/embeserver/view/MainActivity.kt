@@ -1,4 +1,4 @@
-package kz.ascoa.embeserver
+package kz.ascoa.embeserver.view
 
 // import org.java_websocket.drafts.Draft_10;
 
@@ -12,7 +12,6 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Patterns
 import android.view.KeyEvent
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -21,14 +20,17 @@ import androidx.fragment.app.add
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
-import com.dcastalia.localappupdate.BuildConfig
 import com.dcastalia.localappupdate.DownloadApk
-import com.google.gson.JsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.coroutines.launch
+import kz.ascoa.embeserver.DriverService
+import kz.ascoa.embeserver.R
+import kz.ascoa.embeserver.TestReaderFragment
 import kz.ascoa.embeserver.databinding.ActivityMainBinding
+import kz.ascoa.embeserver.enums.ActionType
+import org.java_websocket.client.WebSocketClient
 import org.json.JSONObject
 import java.nio.charset.Charset
 
@@ -48,7 +50,7 @@ class MainActivity : AppCompatActivity() {
 //    private lateinit var appBarConfiguration: AppBarConfiguration
     lateinit var mainActivity: ActivityMainBinding
 
-//    private var mWebSocketClient: WebSocketClient? = null
+    private var mWebSocketClient: WebSocketClient? = null
 
 //    private var testWebSocketClient: WSClient = WSClient(URI("ws://127.0.0.1:38301/"), this)
 
@@ -89,12 +91,18 @@ class MainActivity : AppCompatActivity() {
 
         val preferences = PreferenceManager.getDefaultSharedPreferences (this)
 
+        checkPermission()
+
         mainActivity.startDriverBtn.setOnClickListener { view ->
             doDriverAction(ActionType.START)
         }
 
         mainActivity.stopDriverBtn.setOnClickListener { view ->
             doDriverAction(ActionType.STOP)
+        }
+
+        mainActivity.minimizeButton.setOnClickListener {
+            moveTaskToBack(true)
         }
 
         mainActivity.updateBtn.setOnClickListener { view ->
@@ -105,16 +113,20 @@ class MainActivity : AppCompatActivity() {
             settingsAction()
         }
 
-        mainActivity.exitButton.setOnClickListener { view ->
-            finish()
+        mainActivity.testReaderButton.setOnClickListener { view ->
+            testReaderAction()
         }
 
-        checkPermission()
+        mainActivity.exitButton.setOnClickListener { view ->
+            finishAndRemoveTask()
+        }
+
+
 
         checkForNewVersion()
 
         // Start foreground service
-        doDriverAction(ActionType.START)
+         doDriverAction(ActionType.START)
 
         // ATTENTION: This was auto-generated to handle app links.
         val appLinkIntent: Intent = intent
@@ -123,9 +135,27 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun testReaderAction() {
+        val testFragment = supportFragmentManager.findFragmentById(R.id.testReaderFragmentContainerView)
+        if(testFragment == null) {
+            supportFragmentManager.commit {
+                setReorderingAllowed(true)
+                add<TestReaderFragment>(R.id.testReaderFragmentContainerView)
+            }
+        } else {
+            supportFragmentManager.commit {
+                remove(testFragment)
+            }
+        }
+    }
+
     private fun checkForNewVersion() {
         val preferences = PreferenceManager.getDefaultSharedPreferences(this) // this.getPreferences(Context.MODE_PRIVATE)?: return
         val url = preferences.getString("update_app_url", "")
+        if(url == ""){
+            showAlert("Update URL setting is empty")
+            return
+        }
         val appInfoUrl = url + "/embeserver.info.json"
         var appVersionOnServer = ""
         lifecycleScope.launch {
@@ -169,11 +199,12 @@ class MainActivity : AppCompatActivity() {
                         if(versionCodeOnServer > currentVersionCode) {
                             val currButtonText = mainActivity.updateBtn.text
                             runOnUiThread{
-                                mainActivity.updateBtn.text = "$currButtonText (Can update: $versionCodeOnServer version)"
+                                mainActivity.updateBtn.text = "$currButtonText (Can update. Version: $versionCodeOnServer)"
                             }
                         }
                     }
                 } catch (e: Exception) {
+
                     runOnUiThread{
                         showAlert(e.message)
                         // Toast.makeText(activityContext, "Error on app version check: ${e.message}", Toast.LENGTH_LONG).show()
@@ -184,15 +215,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun settingsAction() {
-        val fragments = supportFragmentManager.fragments
-        if(fragments.count() == 0){
+
+        val fragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView)
+        if(fragment == null) {
             supportFragmentManager.commit {
                 setReorderingAllowed(true)
                 add<SettingsFragment>(R.id.fragmentContainerView)
             }
         } else {
             supportFragmentManager.commit {
-                remove(fragments[0])
+                remove(fragment)
             }
         }
     }
@@ -208,6 +240,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateAction() {
+
+
 
         val requestInstallPackagePermission =
             ActivityCompat.checkSelfPermission(this, Manifest.permission.REQUEST_INSTALL_PACKAGES)
@@ -258,15 +292,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkPermission() {
 
+        var permissionArr = arrayOf<String>(
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+
+        val preferences = PreferenceManager.getDefaultSharedPreferences(this)
+        val device_model = preferences.getString("device_model", "")
+        if ( device_model == "pref_model_zebra_value") {
+            permissionArr += Manifest.permission.BLUETOOTH_CONNECT
+            permissionArr += Manifest.permission.BLUETOOTH_SCAN
+        }
+
         val statePermission =
             ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
         if (statePermission != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf<String>(
-                    Manifest.permission.READ_PHONE_STATE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ),
+//                arrayOf<String>(
+//                    Manifest.permission.READ_PHONE_STATE,
+//                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+//                ),
+                permissionArr,
                 REQUEST_READ_PHONE_STATE
             )
         }

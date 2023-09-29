@@ -1,54 +1,61 @@
 package kz.ascoa.embeserver
 
 import android.content.Context
-import android.media.AudioManager
 import android.media.ToneGenerator
 import android.util.Log
 import android.widget.Toast
 import com.pda.rfid.EPCModel
 import com.pda.rfid.IAsynchronousMessage
-import com.pda.rfid.uhf.Tag6C
 import com.pda.rfid.uhf.UHF
 import com.pda.rfid.uhf.UHFReader
 import com.port.Adapt
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import java.lang.Exception
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
-class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator)  : IAsynchronousMessage {
+class HopelandRfidReader (val context: Context,
+                          val toneGenerator: ToneGenerator,
+                          override val deviceName: String,
+                          override var operationType: String,
+                          override var epcFilterList: MutableList<String>,
+                          override var locatingEpc: String
+)  : IAsynchronousMessage, IReadDevice {
+
 
     var isConnected: Boolean = false
-    var isContinueReading: Boolean = false
-    val deviceName = "Hopeland HY820"
+    override var isContinueReading: Boolean = false
+//    val deviceName = "Hopeland HY820"
     var maxPowerValue: Int = -1
     var minPowerValue: Int = -1
 
     var uhfReader: UHF? = null
 
-    var wsServer: WSServer? = null
+    override lateinit var wsServer: WSServer
 
     // var outPutEpcList: List<EPCModel> = listOf()
     // val outPutEpcListLock: Object = Object()
 
     var listLock = ReentrantLock()
-    var tagList: List<EPCModel?> = mutableListOf()
+    var tagList: MutableList<RfTagData> = mutableListOf()
 
     var currentAntNumber = 1
     private var readerAntCount : Int = 1
 
     val lToneGenerator: ToneGenerator = toneGenerator
 
-    fun deviceDisconnect() {
+    init{
+        operationType = OperationTypes.INVENTORY
+    }
+
+    override fun deviceDisconnect() {
         // uhfReader?.CloseConnect()
         UHFReader._Config.CloseConnect()
         // UHFReader.
         isConnected = false
     }
 
-    fun deviceConnect() : ConnectResults {
+    override fun connectDevice() : String {
         try {
             Adapt.init( context)
             // Thread.sleep(50)
@@ -57,7 +64,7 @@ class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator
             uhfReader = UHFReader.getUHFInstance()
 
             if(uhfReader == null)
-                return ConnectResults.UnknownError
+                return "Cannot connect to reader device"
 
             var res = uhfReader?.OpenConnect(false, this)
             Thread.sleep(500)
@@ -79,13 +86,13 @@ class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator
 
             // Thread.sleep(50)
 
-             return ConnectResults.Success
+             return ""
 
         } catch (e: Exception){
             Log.d("Error", "Connect to UHF device: " + e.stackTrace.toString())
-            // TODO
+            val errorMsg = "Error to connect to device: ${e.stackTrace.toString()}"
             Toast.makeText(context, "Error to connect to device: ${e.stackTrace.toString()}", Toast.LENGTH_SHORT).show()
-            return ConnectResults.UnknownError
+            return errorMsg
         }
     }
 
@@ -96,11 +103,12 @@ class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator
         // Toast.makeText(context, "EPC: ${someDataStr}", Toast.LENGTH_SHORT).show()
         // wsServer?.got_epc(epcStr)
         listLock.lock()
-        tagList += p0
+        var newTag = RfTagData(p0?._EPC, p0?._RSSI,)
+        tagList += newTag
         listLock.unlock()
     }
 
-    fun getAndClearTagList(): List<EPCModel?> {
+    override fun getAndClearTagList(): MutableList<RfTagData> {
         listLock.lock()
         var result = tagList
         tagList = mutableListOf()
@@ -111,12 +119,12 @@ class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator
     /**
      * Set antenna power. Value - %% from max power. 0 - MIN (0dBm), 100 - MAX (30dBm).
      */
-    fun setSignalPower(ratio: Float? = 100f) : Int {
+    override fun setSignalPower(ratio: Float?) : Int {
         var lRatio = ratio?: 100f
         var value = (maxPowerValue * lRatio).roundToInt()
         var i = 1
         var result: Int = -1
-        deviceConnect()
+        connectDevice()
         while(i <= readerAntCount) {
 
             result = UHFReader._Config.SetANTPowerParam(i, value)
@@ -128,48 +136,63 @@ class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator
         return result
     }
 
-    fun readEPC(mode: Int) {
-        if(mode == 0) {
-            deviceConnect()
+    override fun rewriteTag(oldEpc: String, newEpc: String) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setOperationType(operationTypePar: String, locatingEpcPar: String) {
+        operationType = operationTypePar
+        locatingEpc = locatingEpcPar
+    }
+
+    /*
+    Start device read process.
+    On read event function OutPutEPC is called as an event handler. It is defined in IAsynchronousMessage interface from Hopeland native library
+    Reading result is taken by WSServer itself by calling getAndClearTagList.
+     */
+    override fun readEPC(mode: Int, epcFilter: MutableList<String>) {
+//        if(mode == 0) {
+            connectDevice()
             var result = UHFReader._Tag6C.GetEPC(1, mode)
             while(isContinueReading){
                 Thread.sleep(50)
                 if(mode == 0) break
             }
             deviceDisconnect()
-        } else {
-            deviceConnect()
-            var result = UHFReader._Tag6C.GetEPC(1, mode)
-        }
-
-
-
+//        } else {
+//            connectDevice()
+//            var result = UHFReader._Tag6C.GetEPC(1, mode)
+//        }
     }
 
-    fun getTagDistance(): Int {
+    override fun getTagDistance(): Int {
         isContinueReading = true
-        readEPC(0)
+        epcFilterList = mutableListOf(locatingEpc)
+        readEPC(0, epcFilterList)
         isContinueReading = false
         Thread.sleep(50)
         var tagList = getAndClearTagList()
-        if(tagList.count() == 0)
-            return 0
+        if(tagList.count() == 0) return 0
+
         var tagInfo = tagList.last()
-        var result = calcDistanceByTagRssi(tagInfo?._RSSI)
+        var result = calcDistanceByTagRssi(tagInfo?.rssi)
         return result
     }
 
-    private fun calcDistanceByTagRssi(rssi: Byte?) : Int {
-        if (rssi == null)
-            return 0
+    override fun LocateTag(epcCode: String) {
+        TODO("Not yet implemented")
+    }
 
+    private fun calcDistanceByTagRssi(rssi: Byte?) : Int {
+        if (rssi == null) return 0
         try
         {
             var rssiDbl = rssi.toDouble()
             if (rssiDbl == 0.0) return 1;
+
             var ratio = rssiDbl / maxPowerValue;
-            if (ratio < 1.0)
-                return ratio.pow(10).toInt()
+            if (ratio < 1.0) return ratio.pow(10).toInt()
+
             var distance =  0.89976 * ratio.pow( 7.7095) + 0.111;
             return (distance / 60).toInt();
         }
@@ -180,10 +203,3 @@ class HopelandRfidReader (val context: Context, val toneGenerator: ToneGenerator
     }
 }
 
-enum class ConnectResults {
-    Success,
-    ReaderRegionNotConfigured,
-    ConnectionPasswordError,
-    BatchModeInProgress,
-    UnknownError
-}

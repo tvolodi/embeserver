@@ -16,6 +16,17 @@
             app:key="update_app_url"
             app:title="@string/update_app_url_title"
             app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:title="Device Model"
+            app:defaultValue="pref_model_hopeland_value"
+            app:entries="@array/pref_device_model_option_labels"
+            app:entryValues="@array/pref_device_model_option_values"
+            app:isPreferenceVisible="true"
+            app:key="device_model"
+            app:persistent="true"
+            app:useSimpleSummaryProvider="true" />
 
     </PreferenceCategory>
 

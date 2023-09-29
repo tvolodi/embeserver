@@ -1,6 +1,6 @@
 // It's a snippet for update application function!!!
 
-package kz.ascoa.embeserver
+package kz.ascoa.embeserver.Obsolete
 
 import android.app.PendingIntent
 import android.content.Intent

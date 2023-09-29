@@ -68,6 +68,7 @@ dependencies {
     implementation 'org.java-websocket:Java-WebSocket:1.5.3'
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'androidx.preference:preference:1.2.0'
+    implementation project(path: ':RFIDAPI3Library')
     // implementation 'androidx.core:core-ktx:+'
 //    implementation 'androidx.core:core-ktx:+'
     testImplementation 'junit:junit:4.13.2'
@@ -75,4 +76,5 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'com.github.Piashsarker:AndroidAppUpdateLibrary:1.0.4'
+
 }
