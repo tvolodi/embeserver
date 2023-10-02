@@ -11,6 +11,7 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceDialogFragmentCompat
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceManager
 import kz.ascoa.embeserver.R
 import kz.ascoa.embeserver.showAlert
 
@@ -27,6 +28,16 @@ class SettingsFragment : PreferenceFragmentCompat() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+
+        val preferences =
+            activity?.let { PreferenceManager.getDefaultSharedPreferences(it) } // this.getPreferences(Context.MODE_PRIVATE)?: return
+        val deviceTypeName = preferences?.getString("device_model", "")
+
+        var zebraDeviceCategoryPreference = findPreference<PreferenceCategory>("device_list_category")
+
+
+//        if(deviceTypeName == "pref_model_zebra_value") zebraDeviceCategoryPreference?.isVisible = true
+
         var modelPreference: Preference? = findPreference<Preference>("device_model")
         modelPreference?.setOnPreferenceChangeListener { preference, newValue ->
 
@@ -46,8 +57,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
                         )
                     }
                 }
+//                zebraDeviceCategoryPreference?.isVisible = true
+
                 // activity?.let { showAlert(it, "From reader change") }
             }
+
             true
         }
 

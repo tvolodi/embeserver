@@ -82,6 +82,25 @@ class WSServer(
         when (operationName) {
             WSCommands.TEST -> conn?.send("Test passed")
 
+            WSCommands.CONNECT_TO_DEVICE -> {
+                GlobalScope.launch {
+                    var deviceName = parsedMessageList[1]
+                    if(deviceName == null) deviceName = ""
+                    reader?.connectDevice(deviceName)
+                }
+            }
+
+            WSCommands.GET_AVAILABLE_DEVICE_NAME_LIST -> {
+                val deviceNameList = reader?.getAvailableDeviceNameList()
+                val nameListString = deviceNameList?.joinToString(Dividers.VALUE_DIVIDER)
+                conn?.send("${Responses.GOT_AVAILABLE_DEVICE_NAME_LIST}${Dividers.FIELD_DIVIDER}${nameListString}")
+            }
+
+            WSCommands.GET_CONNECTED_DEVICE_NAME -> {
+                val connectedDeviceName = reader?.getConnectedDeviceName()
+                conn?.send("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${connectedDeviceName}")
+            }
+
             WSCommands.GET_TAG_DISTANCE -> {
                 isContinueReading = true
                 reader?.isContinueReading = isContinueReading
@@ -124,8 +143,6 @@ class WSServer(
                 GlobalScope.launch {
                     reader?.readEPC(1, paramValues)
                 }
-
-//                readTagsUntilCancel(conn)
             }
 
             WSCommands.SET_OPERATION_TYPE -> {
@@ -298,7 +315,10 @@ class WSServer(
 
 object WSCommands {
     const val TEST = "test"
+    const val CONNECT_TO_DEVICE="connect_to_device"
     const val GET_TAG_DISTANCE = "get_tag_distance"
+    const val GET_AVAILABLE_DEVICE_NAME_LIST="get_available_device_name_list"
+    const val GET_CONNECTED_DEVICE_NAME="get_connected_device_name"
     const val LOCATE_TAG = "locate_tag"
     const val READ_TAG = "read_tag"
     const val READ_TAG_CONTINUOUS = "read_tag_continuous"
@@ -308,9 +328,12 @@ object WSCommands {
 }
 
 object Responses {
+    const val GOT_AVAILABLE_DEVICE_NAME_LIST = "got_available_device_name_list"
+    const val GOT_CONNECTED_DEVICE_NAME = "got_connected_device_name"
     const val GOT_TAG_DISTANCE = "got_tag_distance"
     const val GOT_EPC = "got_epc"
     const val ERROR = "error"
+
 }
 
 object OperationTypes {

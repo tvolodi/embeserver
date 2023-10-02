@@ -46,7 +46,7 @@ class ZebraRfidReader(val context: DriverService,
     private var availableRFIDReaderList: ArrayList<ReaderDevice>? = null
     private var listLock = ReentrantLock()
     private var tagList: MutableList<RfTagData> = mutableListOf()
-    private val readerDeviceName = ""
+    private var readerDeviceName = ""
     private var MAX_POWER = 270
 
     private var readingMode: Int = 0
@@ -62,18 +62,23 @@ class ZebraRfidReader(val context: DriverService,
         setReaderDevice()
     }
 
-    override fun connectDevice(): String {
+    override fun connectDevice(deviceName: String): String {
+
+        readerDeviceName = deviceName
+
+        deviceDisconnect()
 
         try {
-            setReaderDevice()
+            setReaderDevice(deviceName)
             val res = tryConnect()
             if (res != ""){
                 throw Exception(res)
             }
         } catch (e: Exception) {
-            return e.stackTrace.toString()
+            wsServer.sendErrorMessage("connectDevice", e.message, e.stackTraceToString())
         }
-        return ""
+        wsServer.sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${deviceName}")
+        return deviceName
     }
 
     fun tryConnect(): String {
@@ -96,7 +101,70 @@ class ZebraRfidReader(val context: DriverService,
         return message
     }
 
-    private fun setReaderDevice(): String {
+    override fun getAvailableDeviceNameList(): MutableList<String> {
+
+        var resultList: MutableList<String> = mutableListOf()
+
+        val invalidUsageException: InvalidUsageException? = null
+        readers = Readers(context, ENUM_TRANSPORT.ALL)
+        try {
+            availableRFIDReaderList = readers!!.GetAvailableRFIDReaderList()
+            if ( availableRFIDReaderList == null) {
+                throw Exception("No available readers")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "${e.message}", Toast.LENGTH_LONG).show()
+            throw Exception(e.message)
+        }
+
+        if (readers != null) {
+            Readers.attach(this)
+            try {
+                availableRFIDReaderList = readers!!.GetAvailableRFIDReaderList()
+
+                availableRFIDReaderList?.forEach {
+                    var deviceName = it.name
+                    resultList += deviceName
+                }
+
+//                if (availableRFIDReaderList != null) {
+//                    var listSize = availableRFIDReaderList!!.size
+//                    if (listSize != 0) {
+//                        // if single reader is available then connect it
+//                        if (listSize == 1) {
+//                            readerDevice = availableRFIDReaderList!!.get(0)
+//                            reader = readerDevice!!.rfidReader
+//                        } else {
+//                            // search reader specified by name
+//                            for (device in availableRFIDReaderList!!) {
+//                                if (device.name == readerDeviceName) {
+//                                    readerDevice = device
+//                                    reader = readerDevice!!.rfidReader
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+            } catch (e: InvalidUsageException) {
+                e.printStackTrace()
+            } catch (e: OperationFailureException) {
+                e.printStackTrace()
+                val des = e.results.toString()
+//                return "Connection failed" + e.vendorMessage + " " + des
+            }
+        }
+        return  resultList
+    }
+
+    override fun getConnectedDeviceName(): String {
+
+        var resultDeviceName = ""
+        if(reader?.isConnected == true) resultDeviceName = readerDevice?.name.toString()
+        return resultDeviceName
+    }
+
+    private fun setReaderDevice(deviceName: String = ""): String {
         // Based on support available on host device choose the reader type
 
         val invalidUsageException: InvalidUsageException? = null
@@ -121,23 +189,22 @@ class ZebraRfidReader(val context: DriverService,
         if (readers != null) {
             Readers.attach(this)
             try {
-                availableRFIDReaderList = readers!!.GetAvailableRFIDReaderList()
-                if (availableRFIDReaderList != null) {
+//                availableRFIDReaderList = readers!!.GetAvailableRFIDReaderList()
+                if (availableRFIDReaderList != null && availableRFIDReaderList!!.size != 0) {
                     var listSize = availableRFIDReaderList!!.size
-                    if (listSize != 0) {
-                        // if single reader is available then connect it
-                        if (listSize == 1) {
-                            readerDevice = availableRFIDReaderList!!.get(0)
-                            reader = readerDevice!!.rfidReader
-                        } else {
-                            // search reader specified by name
-                            for (device in availableRFIDReaderList!!) {
-                                if (device.name == readerDeviceName) {
-                                    readerDevice = device
-                                    reader = readerDevice!!.rfidReader
-                                }
+
+                    // If reader is specified
+                    if(deviceName != "") {
+                        for (device in availableRFIDReaderList!!) {
+                            if (device.name == deviceName) {
+                                readerDevice = device
+                                reader = readerDevice!!.rfidReader
                             }
                         }
+                    } else {
+                        // Try to connect to any device
+                        readerDevice = availableRFIDReaderList!![0]
+                        reader = readerDevice!!.rfidReader
                     }
                 }
             } catch (e: InvalidUsageException) {
@@ -210,7 +277,7 @@ class ZebraRfidReader(val context: DriverService,
         this.locatingEpc = locatingEpcPar
     }
 
-    override fun readEPC(mode: Int, epcFilter: MutableList<String>): Unit = runBlocking {
+    override fun readEPC(mode: Int, epcFilter: MutableList<String>) {
         readingMode = mode
 
         operationType = OperationTypes.INVENTORY
@@ -223,7 +290,7 @@ class ZebraRfidReader(val context: DriverService,
             wsServer?.sendErrorMessage("tryConnect",e.message, e.stackTraceToString())
         }
 
-        launch {
+        GlobalScope.launch {
             try {
                 var tagList2 = mutableListOf<RfTagData>()
                 reader?.Actions?.purgeTags()
@@ -370,6 +437,10 @@ class ZebraRfidReader(val context: DriverService,
         } catch (e: Exception){
             wsServer?.sendErrorMessage("rewriteTag", e.message, e.stackTraceToString())
         }
+    }
+
+    override fun setConnectedDevice(deviceName: String): String {
+        TODO("Not yet implemented")
     }
 
     override fun deviceDisconnect() {

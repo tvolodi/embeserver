@@ -32,7 +32,7 @@ import java.net.InetSocketAddress
 private const val name = "SPYSERVICE_KEY"
 private const val key = "SPYSERVICE_STATE"
 
-private var ktorServer : NettyApplicationEngine? = null
+//private var ktorServer : NettyApplicationEngine? = null
 private var commandName : String? = ""
 
 var webSocketServer : WSServer? = null
