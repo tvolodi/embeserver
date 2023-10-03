@@ -4,7 +4,6 @@ import android.content.Context
 import android.media.ToneGenerator
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kz.ascoa.embeserver.Dividers.FIELD_DIVIDER
 import kz.ascoa.embeserver.Dividers.VALUE_DIVIDER
 import java.net.InetSocketAddress
@@ -38,6 +37,7 @@ class WSServer(
 
     var wsConnection: WebSocket? = null
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
+
         wsConnection = conn
         clientHandshake = handshake
         clientConnectionList += conn
@@ -84,10 +84,31 @@ class WSServer(
 
             WSCommands.CONNECT_TO_DEVICE -> {
                 GlobalScope.launch {
-                    var deviceName = parsedMessageList[1]
-                    if(deviceName == null) deviceName = ""
-                    reader?.connectDevice(deviceName)
+                    try{
+                        var deviceName = ""
+                        if(paramValues.count() > 0) {
+                            deviceName = paramValues[0]
+                        }
+                        reader?.connectDevice(deviceName)
+                    } catch (e: Exception){
+                        sendErrorMessage("WSServer.onMessage.CONNECT_TO_DEVICE", e.message, e.stackTraceToString())
+                    }
                 }
+            }
+
+            WSCommands.DISCONNECT_DEVICE -> {
+                GlobalScope.launch {
+                    try{
+                        reader?.disconnectDevice()
+                        sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${""}")
+                    } catch (e: Exception) {
+                        sendErrorMessage("WSServer.onMessage.Disconnect_Device", e.message, e.stackTraceToString())
+                    }
+                }
+            }
+
+            WSCommands.DISCONNECT_WS -> {
+                conn?.close()
             }
 
             WSCommands.GET_AVAILABLE_DEVICE_NAME_LIST -> {
@@ -97,8 +118,12 @@ class WSServer(
             }
 
             WSCommands.GET_CONNECTED_DEVICE_NAME -> {
-                val connectedDeviceName = reader?.getConnectedDeviceName()
-                conn?.send("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${connectedDeviceName}")
+                try {
+                    val connectedDeviceName = reader?.getConnectedDeviceName()
+                    conn?.send("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${connectedDeviceName}")
+                } catch (e: Exception) {
+                    sendErrorMessage("WSServer.onMessage.GET_CONNECTED_DEVICE_NAME", e.message, e.stackTraceToString())
+                }
             }
 
             WSCommands.GET_TAG_DISTANCE -> {
@@ -122,17 +147,15 @@ class WSServer(
             }
 
             WSCommands.READ_TAG -> {
-                try {
-                    isOneTagRequired = true
-                    isContinueReading = true
-                    reader?.isContinueReading = isContinueReading
-                    GlobalScope.launch {
+                isOneTagRequired = true
+                isContinueReading = true
+                reader?.isContinueReading = isContinueReading
+                GlobalScope.launch {
+                    try {
                         reader?.readEPC(0, paramValues)
+                    } catch (e: Exception) {
+                        sendErrorMessage("Read_Tag", e.message, e.stackTraceToString())
                     }
-                    isReuseAddr = true
-                } catch (e: Exception){
-                    val message = "${Responses.ERROR}${Dividers.FIELD_DIVIDER}${e.message}"
-                    conn?.send(message)
                 }
             }
 
@@ -316,6 +339,8 @@ class WSServer(
 object WSCommands {
     const val TEST = "test"
     const val CONNECT_TO_DEVICE="connect_to_device"
+    const val DISCONNECT_DEVICE="disconnect_device"
+    const val DISCONNECT_WS="disconnect_ws"
     const val GET_TAG_DISTANCE = "get_tag_distance"
     const val GET_AVAILABLE_DEVICE_NAME_LIST="get_available_device_name_list"
     const val GET_CONNECTED_DEVICE_NAME="get_connected_device_name"

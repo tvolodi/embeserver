@@ -6,6 +6,10 @@
     p {
         font-size: small;
     }
+
+    select{
+        font-size: small;
+    }
    </style>
 
 </head>
@@ -36,7 +40,11 @@
         <a href="javascript:connectDevice()">Connect to Device</a>
     </div>
 
-    <div id="">
+    <div id="disconnect-device">
+        <a href="javascript:disconnectDevice()">Disconnect Device</a>
+    </div>
+
+    <div id="get-tag-distance">
         <a href="javascript:getTagDistance()">Get Distance to Tag</a>
     </div>
     
@@ -114,6 +122,8 @@
         const WSCommands = {
             TEST: "test",
             CONNECT_TO_DEVICE: "connect_to_device",
+            DISCONNECT_DEVICE: "disconnect_device",
+            DISCONNECT_WS: "disconnect_ws",
             GET_AVAILABLE_DEVICE_NAME_LIST: "get_available_device_name_list",
             GET_CONNECTED_DEVICE_NAME: "get_connected_device_name",
             GET_TAG_DISTANCE: "get_tag_distance",
@@ -189,8 +199,8 @@
 
         function connectWS () {
 
+            // alert(`Hello from connect to WS`)
 
-            
             // Open a web socket
             try {
                 clearMessageInfo();
@@ -202,7 +212,7 @@
             ws.onopen = function () {
 
                 // Web Socket is connected, send data using send()
-                ws.send("Message to send");
+                ws.send("WS connected");
                 isOpened = true;
                 // alert("Message is sent...");
             };
@@ -298,6 +308,10 @@
                 isOpened = false
                 alert("Connection is closed...");
             };
+        }
+
+        function disconnectDevice () {
+            ws.send(`${WSCommands.DISCONNECT_DEVICE}`)
         }
 
         function launchApp () {

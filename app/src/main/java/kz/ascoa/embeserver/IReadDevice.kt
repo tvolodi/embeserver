@@ -9,7 +9,7 @@ interface IReadDevice {
     var locatingEpc: String
 
     fun connectDevice(deviceName: String = ""): String
-    fun deviceDisconnect()
+    fun disconnectDevice()
     fun getAndClearTagList(): MutableList<RfTagData>
     fun getAvailableDeviceNameList(): MutableList<String>
     fun getConnectedDeviceName(): String

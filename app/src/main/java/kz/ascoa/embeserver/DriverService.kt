@@ -20,11 +20,9 @@ import android.os.Looper
 import android.os.Message
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.preference.PreferenceManager
 // import kz.ascoa.embeserver.R
 
-import io.ktor.server.netty.NettyApplicationEngine
 import kz.ascoa.embeserver.enums.ActionType
 import kz.ascoa.embeserver.view.MainActivity
 import java.net.InetSocketAddress
@@ -164,7 +162,7 @@ class DriverService : Service() {
         } else
         {
             try {
-                reader?.deviceDisconnect()
+                reader?.disconnectDevice()
                 wsServerRunnable?.shutdown()
 
 //                reader?.deviceDisconnect()

@@ -51,7 +51,7 @@ class HopelandRfidReader (val context: Context,
         operationType = OperationTypes.INVENTORY
     }
 
-    override fun deviceDisconnect() {
+    override fun disconnectDevice() {
         // uhfReader?.CloseConnect()
         UHFReader._Config.CloseConnect()
         // UHFReader.
@@ -146,7 +146,7 @@ class HopelandRfidReader (val context: Context,
                 break
             i++
         }
-        deviceDisconnect()
+        disconnectDevice()
         return result
     }
 
@@ -195,7 +195,7 @@ class HopelandRfidReader (val context: Context,
 
                 if(readingMode == 0) break
             }
-            deviceDisconnect()
+            disconnectDevice()
         }
 
     }
@@ -242,7 +242,7 @@ class HopelandRfidReader (val context: Context,
 
                 if(readingMode == 0) break
             }
-            deviceDisconnect()
+            disconnectDevice()
         }
     }
 
