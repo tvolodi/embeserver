@@ -68,6 +68,7 @@ class ZebraRfidReader(val context: DriverService,
         disconnectDevice()
         setReaderDevice(deviceName)
         tryConnect()
+        wsServer.sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${readerDeviceName}")
         return readerDeviceName
     }
 

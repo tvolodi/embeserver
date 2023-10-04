@@ -168,7 +168,8 @@ class DriverService : Service() {
 //                reader?.deviceDisconnect()
 //                reader = null
             } catch (e: Exception) {
-                showAlert(this, e.message)
+                showToastMessage(e.message.toString())
+//                showAlert(this, e.message)
             }
 
             stopForeground(true)
@@ -198,7 +199,17 @@ class DriverService : Service() {
     }
 
     fun showErrorAllert(message: String) {
+
         showAlert(this, message)
+    }
+
+    fun showToastMessage(messageText: String) {
+
+        val mainHandler: Handler = Handler(Looper.getMainLooper())
+        mainHandler.post(Runnable {
+                Toast.makeText(applicationContext, messageText, Toast.LENGTH_LONG).show()
+        })
+//        Toast.makeText(this, messageText, Toast.LENGTH_LONG).show()
     }
 
     /**

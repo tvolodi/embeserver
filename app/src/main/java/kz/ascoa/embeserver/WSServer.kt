@@ -91,6 +91,9 @@ class WSServer(
                         }
                         reader?.connectDevice(deviceName)
                     } catch (e: Exception){
+                        if(e.message == ""){
+
+                        }
                         sendErrorMessage("WSServer.onMessage.CONNECT_TO_DEVICE", e.message, e.stackTraceToString())
                     }
                 }
@@ -312,11 +315,14 @@ class WSServer(
 //    }
 
     override fun onError(conn: WebSocket?, ex: Exception?) {
+
+        if(ex?.message == "Address already in use") return
         // Some actions
         connections.forEach {
             it.send(ex?.message)
         }
-        showAlert(context, ex?.message)
+
+        driverService.showToastMessage("Error: WSServer ${ex!!.stackTraceToString()}")
     }
 
     override fun onStart() {
