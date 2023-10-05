@@ -375,10 +375,19 @@ class ZebraRfidReader(val context: DriverService,
     override fun disconnectDevice() {
 
         synchronized(this) {
-            if(reader != null && reader!!.isConnected) {
-                // reader?.Events?.removeEventsListener(eventHandler)
-                reader?.disconnect()
-                // reader = null
+            if(reader != null) {
+                if(reader!!.isConnected){
+                    // reader?.Events?.removeEventsListener(eventHandler)
+                    reader?.disconnect()
+                    // reader = null
+                } else {
+                    try {
+                        val readerVersion = reader!!.versionInfo()
+                        if(readerVersion.version == "") {
+
+                        }
+                    } catch (e: Exception) {}
+                }
             }
         }
     }

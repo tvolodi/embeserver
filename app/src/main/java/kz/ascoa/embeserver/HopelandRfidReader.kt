@@ -2,13 +2,12 @@ package kz.ascoa.embeserver
 
 import android.content.Context
 import android.media.ToneGenerator
-import android.util.Log
-import android.widget.Toast
 import com.pda.rfid.EPCModel
 import com.pda.rfid.IAsynchronousMessage
 import com.pda.rfid.uhf.UHF
 import com.pda.rfid.uhf.UHFReader
 import com.port.Adapt
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -31,6 +30,8 @@ class HopelandRfidReader (val context: Context,
 //    val deviceName = "Hopeland HY820"
     var maxPowerValue: Int = -1
     var minPowerValue: Int = -1
+
+    var readerDeviceName: String = ""
 
     var uhfReader: UHF? = null
 
@@ -60,6 +61,7 @@ class HopelandRfidReader (val context: Context,
 
     override fun connectDevice(deviceName: String) : String {
         try {
+            readerDeviceName = deviceName
             Adapt.init( context)
             // Thread.sleep(50)
             Adapt.enablePauseInBackGround(context)
@@ -88,14 +90,16 @@ class HopelandRfidReader (val context: Context,
             toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 3000)
 
             // Thread.sleep(50)
-
-             return ""
+            if(readerDeviceName == "") readerDeviceName = "Hopeland RFID Handheld"
+            wsServer.sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${readerDeviceName}")
+            return ""
 
         } catch (e: Exception){
-            Log.d("Error", "Connect to UHF device: " + e.stackTrace.toString())
-            val errorMsg = "Error to connect to device: ${e.stackTrace.toString()}"
-            Toast.makeText(context, "Error to connect to device: ${e.stackTrace.toString()}", Toast.LENGTH_SHORT).show()
-            return errorMsg
+//            Log.d("Error", "Connect to UHF device: " + e.stackTrace.toString())
+//            val errorMsg = "Error to connect to device: ${e.stackTrace.toString()}"
+//            Toast.makeText(context, "Error to connect to device: ${e.stackTrace.toString()}", Toast.LENGTH_SHORT).show()
+            wsServer.sendErrorMessage("connectDevice", e.message, e.stackTraceToString())
+            return ""
         }
     }
 
@@ -185,15 +189,20 @@ class HopelandRfidReader (val context: Context,
 
             var result = UHFReader._Tag6C.GetEPC(1, mode)
             while(isContinueReading){
-                delay(50)
+                try {
+                    delay(50)
 
-                listLock.lock()
-                val tagArray = tagList
-                wsServer.sendReadingResult(tagList)
-                tagList.clear()
-                listLock.unlock()
+                    listLock.lock()
+                    val tagArray = tagList
+                    wsServer.sendReadingResult(tagList)
+                    tagList.clear()
+                    listLock.unlock()
 
-                if(readingMode == 0) break
+                    if(readingMode == 0) break
+                } catch (e: Exception) {
+                    wsServer.sendErrorMessage("readEpc", e.message, e.stackTraceToString())
+                    break
+                }
             }
             disconnectDevice()
         }
@@ -214,15 +223,18 @@ class HopelandRfidReader (val context: Context,
         return result
     }
 
-    override fun LocateTag(epcCode: String): Unit = runBlocking{
+    override fun LocateTag(epcCode: String) {
         readingMode = 1
 
         operationType = OperationTypes.INVENTORY
         epcFilterList.clear()
         epcFilterList += epcCode
-        var rssiPower =
 
-        launch {
+        var toneGeneratorRunnable = ToneGeneratorRunContainer(toneGenerator)
+        val toneGenThread = Thread(toneGeneratorRunnable)
+        toneGenThread.start()
+
+        GlobalScope.launch {
             try {
                 connectDevice()
             } catch (e: Exception) {
@@ -232,18 +244,43 @@ class HopelandRfidReader (val context: Context,
 
             var result = UHFReader._Tag6C.GetEPC_MatchEPC(1, readingMode, epcCode)
             while(isContinueReading){
-                delay(50)
+                try {
+                    delay(50)
 
-                listLock.lock()
-                val tagArray = tagList
-                wsServer.sendReadingResult(tagList)
-                tagList.clear()
-                listLock.unlock()
+                    listLock.lock()
+                    val tagArray = tagList
+                    wsServer.sendReadingResult(tagList)
 
-                if(readingMode == 0) break
+                    // rssi == -1000 -> no beep
+                    // if no tag read -> no beep
+                    if(tagList.count() == 0 ) toneGeneratorRunnable.rssi = 1000
+                    else {
+                        val maxRssiItem = tagList.maxBy { it.rssi!!.toByte() }
+                        if(maxRssiItem != null) {
+                            toneGeneratorRunnable.rssi = maxRssiItem.rssi!!.toInt()
+                        } else {
+                            toneGeneratorRunnable.rssi = -1000
+                        }
+                    }
+                    tagList.clear()
+                    listLock.unlock()
+
+                    if(readingMode == 0) break
+                } catch (e: Exception) {
+                    wsServer.sendErrorMessage("readEpc", e.message, e.stackTraceToString())
+                    break
+                }
             }
             disconnectDevice()
         }
+    }
+
+    private fun beepLocationSound() {
+        val maxRssiItem = tagList.maxBy{
+            it.rssi!!.toByte()
+        }
+
+
     }
 
     private fun calcDistanceByTagRssi(rssi: Byte?) : Int {
@@ -262,6 +299,31 @@ class HopelandRfidReader (val context: Context,
         catch (e: Exception)
         {
             return 1;
+        }
+    }
+
+    class ToneGeneratorRunContainer (val toneGenerator: ToneGenerator): Runnable {
+
+        var isToRun: Boolean = true
+        var beepPeriod: Long = 1000L
+        var rssi = -1000
+
+        fun shutdown() {
+            isToRun = false
+        }
+
+//        fun setRssi(rssiPar: Int){
+//            rssi = rssiPar
+//        }
+
+        override fun run() {
+            while(isToRun) {
+                if (rssi > -1000 ) {
+                    toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 200)
+                    beepPeriod = Math.round(-0.016 * rssi - 0.12)
+                    Thread.sleep(beepPeriod)
+                }
+            }
         }
     }
 }

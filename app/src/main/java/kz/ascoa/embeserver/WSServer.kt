@@ -140,6 +140,11 @@ class WSServer(
             }
 
             WSCommands.LOCATE_TAG -> {
+                val tagEpc = paramValues?.get(0)
+                if(tagEpc == "undefined"){
+                    sendErrorMessage("WSCommand.LOCATE_TAG", "undefined EPC for location", "")
+                    return
+                }
                 isContinueReading = true
                 reader?.isContinueReading = true
                 try {
