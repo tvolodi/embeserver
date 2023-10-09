@@ -106,9 +106,9 @@ class HopelandRfidReader (val context: Context,
     // @Synchronized
     override fun OutPutEPC(p0: EPCModel?) {
         val epcStr = p0?._EPC
-        if(operationType == OperationTypes.INVENTORY) {
-            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
-        }
+//        if(operationType == OperationTypes.INVENTORY) {
+//            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
+//        }
 
         // Toast.makeText(context, "EPC: ${someDataStr}", Toast.LENGTH_SHORT).show()
         // wsServer?.got_epc(epcStr)
@@ -226,7 +226,7 @@ class HopelandRfidReader (val context: Context,
     override fun LocateTag(epcCode: String) {
         readingMode = 1
 
-        operationType = OperationTypes.INVENTORY
+        operationType = OperationTypes.LOCATION
         epcFilterList.clear()
         epcFilterList += epcCode
 
@@ -245,7 +245,7 @@ class HopelandRfidReader (val context: Context,
             var result = UHFReader._Tag6C.GetEPC_MatchEPC(1, readingMode, epcCode)
             while(isContinueReading){
                 try {
-                    delay(50)
+                    delay(100)
 
                     listLock.lock()
                     val tagArray = tagList
@@ -253,13 +253,13 @@ class HopelandRfidReader (val context: Context,
 
                     // rssi == -1000 -> no beep
                     // if no tag read -> no beep
-                    if(tagList.count() == 0 ) toneGeneratorRunnable.rssi = 1000
+                    if(tagList.count() == 0 ) toneGeneratorRunnable.rssi = 10
                     else {
                         val maxRssiItem = tagList.maxBy { it.rssi!!.toByte() }
                         if(maxRssiItem != null) {
                             toneGeneratorRunnable.rssi = maxRssiItem.rssi!!.toInt()
                         } else {
-                            toneGeneratorRunnable.rssi = -1000
+                            toneGeneratorRunnable.rssi = 10
                         }
                     }
                     tagList.clear()
@@ -268,10 +268,12 @@ class HopelandRfidReader (val context: Context,
                     if(readingMode == 0) break
                 } catch (e: Exception) {
                     wsServer.sendErrorMessage("readEpc", e.message, e.stackTraceToString())
+                    toneGeneratorRunnable.shutdown()
                     break
                 }
             }
             disconnectDevice()
+            toneGeneratorRunnable.shutdown()
         }
     }
 
@@ -306,7 +308,7 @@ class HopelandRfidReader (val context: Context,
 
         var isToRun: Boolean = true
         var beepPeriod: Long = 1000L
-        var rssi = -1000
+        var rssi = 10
 
         fun shutdown() {
             isToRun = false
@@ -317,13 +319,18 @@ class HopelandRfidReader (val context: Context,
 //        }
 
         override fun run() {
-            while(isToRun) {
-                if (rssi > -1000 ) {
-                    toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 200)
-                    beepPeriod = Math.round(-0.016 * rssi - 0.12)
-                    Thread.sleep(beepPeriod)
+            try {
+                while(isToRun) {
+                    if (rssi > 10 ) {
+                        toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 200)
+                        beepPeriod = (-11 * rssi + 1095).toLong()
+                        Thread.sleep(beepPeriod)
+                    }
                 }
+            } catch (e: Exception) {
+                return
             }
+
         }
     }
 }
