@@ -75,6 +75,7 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation fileTree(include: ['*.jar'], dir: 'hl_bt_lib')
     implementation 'com.github.Piashsarker:AndroidAppUpdateLibrary:1.0.4'
 
 }
