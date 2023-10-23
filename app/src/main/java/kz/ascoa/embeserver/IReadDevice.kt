@@ -8,13 +8,16 @@ interface IReadDevice {
     var epcFilterList: MutableList<String>
     var locatingEpc: String
 
-    fun connectDevice(): String
-    fun deviceDisconnect()
+    fun connectDevice(deviceName: String = ""): String
+    fun disconnectDevice()
     fun getAndClearTagList(): MutableList<RfTagData>
+    fun getAvailableDeviceNameList(): MutableList<String>
+    fun getConnectedDeviceName(): String
     fun getTagDistance(): Int
     fun LocateTag(locatingEpc: String)
     fun readEPC(mode: Int, epcFilter: MutableList<String>, )
     fun rewriteTag(oldEpc: String, newEpc: String )
+    fun setConnectedDevice(deviceName: String): String
     fun setOperationType(operationType: String, locatingEpc: String)
     fun setSignalPower(ratio: Float? = 100f) : Int
 

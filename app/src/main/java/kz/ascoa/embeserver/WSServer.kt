@@ -4,7 +4,6 @@ import android.content.Context
 import android.media.ToneGenerator
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kz.ascoa.embeserver.Dividers.FIELD_DIVIDER
 import kz.ascoa.embeserver.Dividers.VALUE_DIVIDER
 import java.net.InetSocketAddress
@@ -38,6 +37,7 @@ class WSServer(
 
     var wsConnection: WebSocket? = null
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
+
         wsConnection = conn
         clientHandshake = handshake
         clientConnectionList += conn
@@ -82,6 +82,53 @@ class WSServer(
         when (operationName) {
             WSCommands.TEST -> conn?.send("Test passed")
 
+            WSCommands.CONNECT_TO_DEVICE -> {
+                GlobalScope.launch {
+                    try{
+                        var deviceName = ""
+                        if(paramValues.count() > 0) {
+                            deviceName = paramValues[0]
+                        }
+                        reader?.connectDevice(deviceName)
+                    } catch (e: Exception){
+                        if(e.message == ""){
+
+                        }
+                        sendErrorMessage("WSServer.onMessage.CONNECT_TO_DEVICE", e.message, e.stackTraceToString())
+                    }
+                }
+            }
+
+            WSCommands.DISCONNECT_DEVICE -> {
+                GlobalScope.launch {
+                    try{
+                        reader?.disconnectDevice()
+                        sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${""}")
+                    } catch (e: Exception) {
+                        sendErrorMessage("WSServer.onMessage.Disconnect_Device", e.message, e.stackTraceToString())
+                    }
+                }
+            }
+
+            WSCommands.DISCONNECT_WS -> {
+                conn?.close()
+            }
+
+            WSCommands.GET_AVAILABLE_DEVICE_NAME_LIST -> {
+                val deviceNameList = reader?.getAvailableDeviceNameList()
+                val nameListString = deviceNameList?.joinToString(Dividers.VALUE_DIVIDER)
+                conn?.send("${Responses.GOT_AVAILABLE_DEVICE_NAME_LIST}${Dividers.FIELD_DIVIDER}${nameListString}")
+            }
+
+            WSCommands.GET_CONNECTED_DEVICE_NAME -> {
+                try {
+                    val connectedDeviceName = reader?.getConnectedDeviceName()
+                    conn?.send("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${connectedDeviceName}")
+                } catch (e: Exception) {
+                    sendErrorMessage("WSServer.onMessage.GET_CONNECTED_DEVICE_NAME", e.message, e.stackTraceToString())
+                }
+            }
+
             WSCommands.GET_TAG_DISTANCE -> {
                 isContinueReading = true
                 reader?.isContinueReading = isContinueReading
@@ -93,6 +140,11 @@ class WSServer(
             }
 
             WSCommands.LOCATE_TAG -> {
+                val tagEpc = paramValues?.get(0)
+                if(tagEpc == "undefined"){
+                    sendErrorMessage("WSCommand.LOCATE_TAG", "undefined EPC for location", "")
+                    return
+                }
                 isContinueReading = true
                 reader?.isContinueReading = true
                 try {
@@ -103,17 +155,15 @@ class WSServer(
             }
 
             WSCommands.READ_TAG -> {
-                try {
-                    isOneTagRequired = true
-                    isContinueReading = true
-                    reader?.isContinueReading = isContinueReading
-                    GlobalScope.launch {
+                isOneTagRequired = true
+                isContinueReading = true
+                reader?.isContinueReading = isContinueReading
+                GlobalScope.launch {
+                    try {
                         reader?.readEPC(0, paramValues)
+                    } catch (e: Exception) {
+                        sendErrorMessage("Read_Tag", e.message, e.stackTraceToString())
                     }
-                    isReuseAddr = true
-                } catch (e: Exception){
-                    val message = "${Responses.ERROR}${Dividers.FIELD_DIVIDER}${e.message}"
-                    conn?.send(message)
                 }
             }
 
@@ -124,8 +174,6 @@ class WSServer(
                 GlobalScope.launch {
                     reader?.readEPC(1, paramValues)
                 }
-
-//                readTagsUntilCancel(conn)
             }
 
             WSCommands.SET_OPERATION_TYPE -> {
@@ -272,11 +320,14 @@ class WSServer(
 //    }
 
     override fun onError(conn: WebSocket?, ex: Exception?) {
+
+        if(ex?.message == "Address already in use") return
         // Some actions
         connections.forEach {
             it.send(ex?.message)
         }
-        showAlert(context, ex?.message)
+
+        driverService.showToastMessage("Error: WSServer ${ex!!.stackTraceToString()}")
     }
 
     override fun onStart() {
@@ -298,7 +349,12 @@ class WSServer(
 
 object WSCommands {
     const val TEST = "test"
+    const val CONNECT_TO_DEVICE="connect_to_device"
+    const val DISCONNECT_DEVICE="disconnect_device"
+    const val DISCONNECT_WS="disconnect_ws"
     const val GET_TAG_DISTANCE = "get_tag_distance"
+    const val GET_AVAILABLE_DEVICE_NAME_LIST="get_available_device_name_list"
+    const val GET_CONNECTED_DEVICE_NAME="get_connected_device_name"
     const val LOCATE_TAG = "locate_tag"
     const val READ_TAG = "read_tag"
     const val READ_TAG_CONTINUOUS = "read_tag_continuous"
@@ -308,9 +364,12 @@ object WSCommands {
 }
 
 object Responses {
+    const val GOT_AVAILABLE_DEVICE_NAME_LIST = "got_available_device_name_list"
+    const val GOT_CONNECTED_DEVICE_NAME = "got_connected_device_name"
     const val GOT_TAG_DISTANCE = "got_tag_distance"
     const val GOT_EPC = "got_epc"
     const val ERROR = "error"
+
 }
 
 object OperationTypes {

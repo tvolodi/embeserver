@@ -30,7 +30,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.java_websocket.WebSocket
 import java.util.concurrent.locks.ReentrantLock
 
 class ZebraRfidReader(val context: DriverService,
@@ -46,7 +45,7 @@ class ZebraRfidReader(val context: DriverService,
     private var availableRFIDReaderList: ArrayList<ReaderDevice>? = null
     private var listLock = ReentrantLock()
     private var tagList: MutableList<RfTagData> = mutableListOf()
-    private val readerDeviceName = ""
+    private var readerDeviceName = ""
     private var MAX_POWER = 270
 
     private var readingMode: Int = 0
@@ -62,42 +61,27 @@ class ZebraRfidReader(val context: DriverService,
         setReaderDevice()
     }
 
-    override fun connectDevice(): String {
+    override fun connectDevice(deviceName: String): String {
 
-        try {
-            setReaderDevice()
-            val res = tryConnect()
-            if (res != ""){
-                throw Exception(res)
-            }
-        } catch (e: Exception) {
-            return e.stackTrace.toString()
-        }
-        return ""
+        readerDeviceName = deviceName
+
+        disconnectDevice()
+        setReaderDevice(deviceName)
+        tryConnect()
+        wsServer.sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${readerDeviceName}")
+        return readerDeviceName
     }
 
-    fun tryConnect(): String {
-        var message = ""
-        try {
-            if(!reader!!.isConnected) {
-                reader!!.connect()
-                configureReader()
-                if (reader!!.isConnected) {
-                    return ""
-                } else {
-                    return "Can't connect to device"
-                }
-            } else return "" // Reader is connected. Nothing to do.
-        } catch (e: Exception) {
-            message = "Cannot connect to Zebra RFID device"
-            if(e.message != null && e.message != "") message = e.message!!
-            wsServer.sendErrorMessage("tryConnect", message, e.stackTrace.toString())
+    fun tryConnect() {
+        if(!reader!!.isConnected) {
+            reader!!.connect()
+            configureReader()
         }
-        return message
     }
 
-    private fun setReaderDevice(): String {
-        // Based on support available on host device choose the reader type
+    override fun getAvailableDeviceNameList(): MutableList<String> {
+
+        var resultList: MutableList<String> = mutableListOf()
 
         val invalidUsageException: InvalidUsageException? = null
         readers = Readers(context, ENUM_TRANSPORT.ALL)
@@ -112,6 +96,64 @@ class ZebraRfidReader(val context: DriverService,
             throw Exception(e.message)
         }
 
+        if (readers != null) {
+            Readers.attach(this)
+            try {
+                availableRFIDReaderList = readers!!.GetAvailableRFIDReaderList()
+
+                availableRFIDReaderList?.forEach {
+                    var deviceName = it.name
+                    resultList += deviceName
+                }
+
+//                if (availableRFIDReaderList != null) {
+//                    var listSize = availableRFIDReaderList!!.size
+//                    if (listSize != 0) {
+//                        // if single reader is available then connect it
+//                        if (listSize == 1) {
+//                            readerDevice = availableRFIDReaderList!!.get(0)
+//                            reader = readerDevice!!.rfidReader
+//                        } else {
+//                            // search reader specified by name
+//                            for (device in availableRFIDReaderList!!) {
+//                                if (device.name == readerDeviceName) {
+//                                    readerDevice = device
+//                                    reader = readerDevice!!.rfidReader
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+            } catch (e: InvalidUsageException) {
+                e.printStackTrace()
+            } catch (e: OperationFailureException) {
+                e.printStackTrace()
+                val des = e.results.toString()
+//                return "Connection failed" + e.vendorMessage + " " + des
+            }
+        }
+        return  resultList
+    }
+
+    override fun getConnectedDeviceName(): String {
+
+        var resultDeviceName = ""
+        if(reader?.isConnected == true) resultDeviceName = readerDevice?.name.toString()
+        return resultDeviceName
+    }
+
+    private fun setReaderDevice(deviceName: String = "") {
+        // Based on support available on host device choose the reader type
+
+        readerDeviceName = ""
+
+        val invalidUsageException: InvalidUsageException? = null
+        readers = Readers(context, ENUM_TRANSPORT.ALL)
+        availableRFIDReaderList = readers!!.GetAvailableRFIDReaderList()
+        if ( availableRFIDReaderList == null) {
+            throw Exception("No available readers")
+        }
+
         if (invalidUsageException != null) {
             readers!!.Dispose()
             readers = null
@@ -120,35 +162,26 @@ class ZebraRfidReader(val context: DriverService,
 
         if (readers != null) {
             Readers.attach(this)
-            try {
-                availableRFIDReaderList = readers!!.GetAvailableRFIDReaderList()
-                if (availableRFIDReaderList != null) {
-                    var listSize = availableRFIDReaderList!!.size
-                    if (listSize != 0) {
-                        // if single reader is available then connect it
-                        if (listSize == 1) {
-                            readerDevice = availableRFIDReaderList!!.get(0)
+//                availableRFIDReaderList = readers!!.GetAvailableRFIDReaderList()
+            if (availableRFIDReaderList != null && availableRFIDReaderList!!.size != 0) {
+                var listSize = availableRFIDReaderList!!.size
+
+                // If reader is specified
+                if(deviceName != "") {
+                    for (device in availableRFIDReaderList!!) {
+                        if (device.name == deviceName) {
+                            readerDevice = device
                             reader = readerDevice!!.rfidReader
-                        } else {
-                            // search reader specified by name
-                            for (device in availableRFIDReaderList!!) {
-                                if (device.name == readerDeviceName) {
-                                    readerDevice = device
-                                    reader = readerDevice!!.rfidReader
-                                }
-                            }
                         }
                     }
+                } else {
+                    // Try to connect to any device
+                    readerDevice = availableRFIDReaderList!![0]
+                    reader = readerDevice!!.rfidReader
                 }
-            } catch (e: InvalidUsageException) {
-                e.printStackTrace()
-            } catch (e: OperationFailureException) {
-                e.printStackTrace()
-                val des = e.results.toString()
-                return "Connection failed" + e.vendorMessage + " " + des
+                readerDeviceName = readerDevice!!.name
             }
         }
-        return ""
     }
 
     private fun configureReader() {
@@ -156,48 +189,41 @@ class ZebraRfidReader(val context: DriverService,
             val triggerInfo = TriggerInfo()
             triggerInfo.StartTrigger.triggerType = START_TRIGGER_TYPE.START_TRIGGER_TYPE_IMMEDIATE
             triggerInfo.StopTrigger.triggerType = STOP_TRIGGER_TYPE.STOP_TRIGGER_TYPE_IMMEDIATE
-            try {
-                // receive events from reader
-                if (eventHandler == null) eventHandler = EventHandler()
-                var readerEvents = reader!!.Events
-                readerEvents.addEventsListener( eventHandler )
-                // HH event
-                readerEvents.setHandheldEvent(true)
-                // tag event with tag data
-                readerEvents.setTagReadEvent(true)
-                readerEvents.setAttachTagDataWithReadEvent(false)
-                // set trigger mode as rfid so scanner beam will not come
-                var readerConfig = reader!!.Config
+            // receive events from reader
+            if (eventHandler == null) eventHandler = EventHandler()
+            var readerEvents = reader!!.Events
+            readerEvents.addEventsListener( eventHandler )
+            // HH event
+            readerEvents.setHandheldEvent(true)
+            // tag event with tag data
+            readerEvents.setTagReadEvent(true)
+            readerEvents.setAttachTagDataWithReadEvent(false)
+            // set trigger mode as rfid so scanner beam will not come
+            var readerConfig = reader!!.Config
 
-                readerConfig?.beeperVolume = BEEPER_VOLUME.LOW_BEEP
-                readerConfig?.setBatchMode(BATCH_MODE.DISABLE)
+            readerConfig?.beeperVolume = BEEPER_VOLUME.LOW_BEEP
+            readerConfig?.setBatchMode(BATCH_MODE.DISABLE)
 
-                readerConfig.setTriggerMode( ENUM_TRIGGER_MODE.RFID_MODE, true )
-                // set start and stop triggers
-                readerConfig.setStartTrigger(triggerInfo.StartTrigger)
-                readerConfig.setStopTrigger(triggerInfo.StopTrigger)
-                // power levels are index based so maximum power supported get the last one
-                MAX_POWER = reader!!.ReaderCapabilities.getTransmitPowerLevelValues().size - 1
-                // set antenna configurations
-                val antennaConfig: Antennas.AntennaRfConfig = readerConfig.Antennas.getAntennaRfConfig(1)
-                antennaConfig.transmitPowerIndex = MAX_POWER
-                antennaConfig.setrfModeTableIndex(0)
-                antennaConfig.tari = 0
-                readerConfig.Antennas.setAntennaRfConfig(1, antennaConfig)
-                // Set the singulation control
-                val s1_singulationControl: Antennas.SingulationControl = readerConfig.Antennas.getSingulationControl(1)
-                s1_singulationControl.session = SESSION.SESSION_S0
-                s1_singulationControl.Action.inventoryState = INVENTORY_STATE.INVENTORY_STATE_A
-                s1_singulationControl.Action.slFlag = SL_FLAG.SL_ALL
-                readerConfig.Antennas.setSingulationControl(1, s1_singulationControl)
-                // delete any prefilters
-                reader?.Actions?.PreFilters?.deleteAll()
-                //
-            } catch (e: InvalidUsageException) {
-                e.printStackTrace()
-            } catch (e: OperationFailureException) {
-                e.printStackTrace()
-            }
+            readerConfig.setTriggerMode( ENUM_TRIGGER_MODE.RFID_MODE, true )
+            // set start and stop triggers
+            readerConfig.setStartTrigger(triggerInfo.StartTrigger)
+            readerConfig.setStopTrigger(triggerInfo.StopTrigger)
+            // power levels are index based so maximum power supported get the last one
+            MAX_POWER = reader!!.ReaderCapabilities.getTransmitPowerLevelValues().size - 1
+            // set antenna configurations
+            val antennaConfig: Antennas.AntennaRfConfig = readerConfig.Antennas.getAntennaRfConfig(1)
+            antennaConfig.transmitPowerIndex = MAX_POWER
+            antennaConfig.setrfModeTableIndex(0)
+            antennaConfig.tari = 0
+            readerConfig.Antennas.setAntennaRfConfig(1, antennaConfig)
+            // Set the singulation control
+            val s1_singulationControl: Antennas.SingulationControl = readerConfig.Antennas.getSingulationControl(1)
+            s1_singulationControl.session = SESSION.SESSION_S0
+            s1_singulationControl.Action.inventoryState = INVENTORY_STATE.INVENTORY_STATE_A
+            s1_singulationControl.Action.slFlag = SL_FLAG.SL_ALL
+            readerConfig.Antennas.setSingulationControl(1, s1_singulationControl)
+            // delete any prefilters
+            reader?.Actions?.PreFilters?.deleteAll()
         }
     }
 
@@ -210,21 +236,17 @@ class ZebraRfidReader(val context: DriverService,
         this.locatingEpc = locatingEpcPar
     }
 
-    override fun readEPC(mode: Int, epcFilter: MutableList<String>): Unit = runBlocking {
+    override fun readEPC(mode: Int, epcFilter: MutableList<String>) {
         readingMode = mode
 
         operationType = OperationTypes.INVENTORY
         epcFilterList = epcFilter
 
         var isReading = false
-        try{
-            tryConnect()
-        } catch (e: Exception) {
-            wsServer?.sendErrorMessage("tryConnect",e.message, e.stackTraceToString())
-        }
+        tryConnect()
 
-        launch {
-            try {
+        GlobalScope.launch {
+            try{
                 var tagList2 = mutableListOf<RfTagData>()
                 reader?.Actions?.purgeTags()
                 reader?.Actions?.Inventory?.perform()
@@ -247,46 +269,23 @@ class ZebraRfidReader(val context: DriverService,
                         }
                     }
                     launch {
-                        listLock.lock()
-                        wsServer?.sendReadingResult(tagList)
-                        tagList.clear()
-                        listLock.unlock()
+                        try{
+                            listLock.lock()
+                            wsServer?.sendReadingResult(tagList)
+                            tagList.clear()
+                            listLock.unlock()
+                        } catch (e: Exception){
+                            wsServer.sendErrorMessage("ReadEPC.SendReadingResults", e.message, e.stackTraceToString())
+                        }
                     }
-
-
-
                     if (readingMode == 0) {
                         break
                     }
                 }
                 reader?.Actions?.Inventory?.stop()
-
-
-//                launch {
-//                    wsServer.sendReadingResult(tagList)
-//                    tagList.clear()
-//                }
             } catch (e: Exception) {
-                wsServer?.sendErrorMessage("readEPC", e.message, e.stackTraceToString())
-//                try{
-//                    reader?.Actions?.Inventory?.stop()
-//                } catch(e: Exception){
-//                    var errMessage = e.message
-//                    if(errMessage == null || errMessage == ""){
-//                        errMessage = "Cannot stop reader device"
-//                    }
-//                    wsServer?.sendErrorMessage(e.message, e.stackTrace.toString())
-//                }
-            } finally {
+                wsServer.sendErrorMessage("ReadEPC", e.message, e.stackTraceToString())
             }
-
-//            if (readingMode == 0) {
-//                delay(1000L)
-//                launch {
-//                    wsServer.sendReadingResult(tagList)
-//                    tagList.clear()
-//                }
-//            }
         }
     }
 
@@ -301,10 +300,7 @@ class ZebraRfidReader(val context: DriverService,
 
         var tagDistancesMap: MutableMap<String, MutableSet<Short?>> = mutableMapOf()
 
-        val res = tryConnect()
-        if (res != "") {
-            throw Exception("Can't connect Zebra")
-        }
+        tryConnect()
 
         launch{
             try {
@@ -372,18 +368,27 @@ class ZebraRfidReader(val context: DriverService,
         }
     }
 
-    override fun deviceDisconnect() {
+    override fun setConnectedDevice(deviceName: String): String {
+        TODO("Not yet implemented")
+    }
 
-        try {
-            synchronized(this) {
-                if(reader != null) {
-                    reader?.Events?.removeEventsListener(eventHandler)
+    override fun disconnectDevice() {
+
+        synchronized(this) {
+            if(reader != null) {
+                if(reader!!.isConnected){
+                    // reader?.Events?.removeEventsListener(eventHandler)
                     reader?.disconnect()
-                    reader = null
+                    // reader = null
+                } else {
+                    try {
+                        val readerVersion = reader!!.versionInfo()
+                        if(readerVersion.version == "") {
+
+                        }
+                    } catch (e: Exception) {}
                 }
             }
-        } catch (e: InvalidUsageException) {
-            e.printStackTrace()
         }
     }
 
