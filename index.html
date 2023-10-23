@@ -2,7 +2,15 @@
 <html>
 <head>
 
-   
+   <style>
+    p {
+        font-size: small;
+    }
+
+    select{
+        font-size: small;
+    }
+   </style>
 
 </head>
 
@@ -13,6 +21,33 @@
     <div id="sse">
         <a href="javascript:connectWS()">Connect to WS Server</a>
     </div>
+    <div>
+        <a href="javascript:getConnectedDevice()">Get connected device name</a>
+    </div>
+    <div id="connected-device">
+        <p></p>
+    </div>
+    
+    <div id="update-available-devices-button">
+        <a href="javascript:getAvailableDeviceNameList()">Update Device List</a>
+    </div>
+
+    <label for="available-devices">Available Devices</label>
+    <select name="available-devices" id="available-devices">
+    </select>
+
+    <div id="connect-device-link">
+        <a href="javascript:connectDevice()">Connect to Device</a>
+    </div>
+
+    <div id="disconnect-device">
+        <a href="javascript:disconnectDevice()">Disconnect Device</a>
+    </div>
+
+    <div id="get-tag-distance">
+        <a href="javascript:getTagDistance()">Get Distance to Tag</a>
+    </div>
+    
     <div id="read_tag">
         <a href="javascript:readTag()">Read a Tag</a>
     </div>
@@ -86,6 +121,11 @@
 
         const WSCommands = {
             TEST: "test",
+            CONNECT_TO_DEVICE: "connect_to_device",
+            DISCONNECT_DEVICE: "disconnect_device",
+            DISCONNECT_WS: "disconnect_ws",
+            GET_AVAILABLE_DEVICE_NAME_LIST: "get_available_device_name_list",
+            GET_CONNECTED_DEVICE_NAME: "get_connected_device_name",
             GET_TAG_DISTANCE: "get_tag_distance",
             LOCATE_TAG: "locate_tag",
             READ_TAG: "read_tag",
@@ -96,6 +136,8 @@
         }
 
         const Responses = {
+            GOT_AVAILABLE_DEVICE_NAME_LIST: "got_available_device_name_list",
+            GOT_CONNECTED_DEVICE_NAME: "got_connected_device_name",
             GOT_TAG_DISTANCE: "got_tag_distance",
             GOT_EPC: "got_epc",
             ERROR: "error",
@@ -146,10 +188,19 @@
             msgInfoElement.innerHTML = ""
         }
 
+        function connectDevice(){
+            const availableDevices = document.getElementById("available-devices");
+            const selectedValue = availableDevices.value;
+            
+            // alert(`Selected Value ${selectedValue}`);
+            
+            ws.send(`${WSCommands.CONNECT_TO_DEVICE}${Dividers.FIELD_DIVIDER}${selectedValue}`)
+        }
+
         function connectWS () {
 
+            // alert(`Hello from connect to WS`)
 
-            
             // Open a web socket
             try {
                 clearMessageInfo();
@@ -161,7 +212,7 @@
             ws.onopen = function () {
 
                 // Web Socket is connected, send data using send()
-                ws.send("Message to send");
+                ws.send("WS connected");
                 isOpened = true;
                 // alert("Message is sent...");
             };
@@ -220,7 +271,32 @@
                         }
                         break;
 
-                    case Responses.
+                    case Responses.GOT_AVAILABLE_DEVICE_NAME_LIST:
+
+                        let list = messageArr[1]?.split(Dividers.VALUE_DIVIDER)
+                        const devicesDropdown = document.getElementById("available-devices")
+                        
+                        while(devicesDropdown.lastElementChild) devicesDropdown.removeChild(devicesDropdown.lastChild);
+
+                        if(list === null)  {
+                            return;
+                        }
+
+                        const listLength = list.length;
+                        for(let i=0; i<listLength; i++) {
+                            devicesDropdown.add(new Option(list[i], list[i]));
+                        }
+
+                        break;
+
+                    case Responses.GOT_CONNECTED_DEVICE_NAME:
+                        const connectedDeviceElement = document.getElementById("connected-device");
+                        const connectedDeviceElemChildren = connectedDeviceElement.children;
+                        const pElement = connectedDeviceElemChildren[0]
+                        pElement.innerHTML = messageArr[1]
+
+                        break;
+                        
                         default:
                 }
                 // alert("Message is received: " + received_msg);
@@ -234,6 +310,10 @@
             };
         }
 
+        function disconnectDevice () {
+            ws.send(`${WSCommands.DISCONNECT_DEVICE}`)
+        }
+
         function launchApp () {
             const url = "intent://www.vt-ptm.org/#Intent;" +
                 "schema=https;" +
@@ -242,6 +322,14 @@
                 // "category=;"+
                 "end"
             window.location.replace(url)
+        }
+
+        function getAvailableDeviceNameList() {
+            ws.send(WSCommands.GET_AVAILABLE_DEVICE_NAME_LIST)
+        }
+
+        function getConnectedDevice() {
+            ws.send(WSCommands.GET_CONNECTED_DEVICE_NAME)
         }
 
         function getTagDistance () {

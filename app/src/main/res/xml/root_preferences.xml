@@ -27,6 +27,22 @@
             app:key="device_model"
             app:persistent="true"
             app:useSimpleSummaryProvider="true" />
+        <PreferenceCategory
+            app:key="device_list_category"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:title="Reader List"
+            app:enabled="true"
+            app:isPreferenceVisible="false"
+            >
+
+            <ListPreference
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:defaultValue="1"
+                android:title="Readers"
+                app:key="deviceList" />
+        </PreferenceCategory>
 
     </PreferenceCategory>
 

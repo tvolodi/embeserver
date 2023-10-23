@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Patterns
 import android.view.KeyEvent
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -262,32 +263,37 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAlert(message: String?) {
-        // Create the object of AlertDialog Builder class
-        // Create the object of AlertDialog Builder class
-        val builder: AlertDialog.Builder = AlertDialog.Builder(this@MainActivity)
+        try {
+            // Create the object of AlertDialog Builder class
+            // Create the object of AlertDialog Builder class
+            val builder: AlertDialog.Builder = AlertDialog.Builder(this@MainActivity)
 
-        // Set the message show for the Alert time
-        builder.setMessage(message)
+            // Set the message show for the Alert time
+            builder.setMessage(message)
 
-        // Set Alert Title
-        builder.setTitle("Alert!")
+            // Set Alert Title
+            builder.setTitle("Alert!")
 
-        // Set Cancelable false for when the user clicks on the outside the Dialog Box then it will remain show
-        builder.setCancelable(false)
+            // Set Cancelable false for when the user clicks on the outside the Dialog Box then it will remain show
+            builder.setCancelable(false)
 
-        // Set the positive button with yes name Lambda OnClickListener method is use of DialogInterface interface.
-        builder.setPositiveButton("OK",
-            DialogInterface.OnClickListener { dialog: DialogInterface?, which: Int ->
-                // When the user click yes button then app will close
-                dialog?.cancel();
-            } as DialogInterface.OnClickListener)
+            // Set the positive button with yes name Lambda OnClickListener method is use of DialogInterface interface.
+            builder.setPositiveButton("OK",
+                DialogInterface.OnClickListener { dialog: DialogInterface?, which: Int ->
+                    // When the user click yes button then app will close
+                    dialog?.cancel();
+                } as DialogInterface.OnClickListener)
 
 
-        // Create the Alert dialog
-        val alertDialog: AlertDialog = builder.create()
-        // Show the Alert Dialog box
-        // Show the Alert Dialog box
-        alertDialog.show()
+            // Create the Alert dialog
+            val alertDialog: AlertDialog = builder.create()
+            // Show the Alert Dialog box
+            // Show the Alert Dialog box
+            alertDialog.show()
+        } catch (e: Exception) {
+            Toast.makeText(this, message.toString(), Toast.LENGTH_LONG).show()
+        }
+
     }
 
     private fun checkPermission() {

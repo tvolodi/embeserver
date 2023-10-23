@@ -20,11 +20,9 @@ import android.os.Looper
 import android.os.Message
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.preference.PreferenceManager
 // import kz.ascoa.embeserver.R
 
-import io.ktor.server.netty.NettyApplicationEngine
 import kz.ascoa.embeserver.enums.ActionType
 import kz.ascoa.embeserver.view.MainActivity
 import java.net.InetSocketAddress
@@ -32,7 +30,7 @@ import java.net.InetSocketAddress
 private const val name = "SPYSERVICE_KEY"
 private const val key = "SPYSERVICE_STATE"
 
-private var ktorServer : NettyApplicationEngine? = null
+//private var ktorServer : NettyApplicationEngine? = null
 private var commandName : String? = ""
 
 var webSocketServer : WSServer? = null
@@ -164,13 +162,14 @@ class DriverService : Service() {
         } else
         {
             try {
-                reader?.deviceDisconnect()
+                reader?.disconnectDevice()
                 wsServerRunnable?.shutdown()
 
 //                reader?.deviceDisconnect()
 //                reader = null
             } catch (e: Exception) {
-                showAlert(this, e.message)
+                showToastMessage(e.message.toString())
+//                showAlert(this, e.message)
             }
 
             stopForeground(true)
@@ -200,7 +199,17 @@ class DriverService : Service() {
     }
 
     fun showErrorAllert(message: String) {
+
         showAlert(this, message)
+    }
+
+    fun showToastMessage(messageText: String) {
+
+        val mainHandler: Handler = Handler(Looper.getMainLooper())
+        mainHandler.post(Runnable {
+                Toast.makeText(applicationContext, messageText, Toast.LENGTH_LONG).show()
+        })
+//        Toast.makeText(this, messageText, Toast.LENGTH_LONG).show()
     }
 
     /**
