@@ -15,7 +15,7 @@ android {
         //noinspection ExpiredTargetSdkVersion
         targetSdk 28
         versionCode 1
-        versionName "Hopeland RFID"
+        versionName "Embeserver 1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -44,6 +44,7 @@ android {
             excludes += ['META-INF/*']
         }
     }
+    buildToolsVersion '33.0.1'
 
 }
 
@@ -69,13 +70,14 @@ dependencies {
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'androidx.preference:preference:1.2.0'
     implementation project(path: ':RFIDAPI3Library')
+	implementation project(path: ':HL_BT_Library')
     // implementation 'androidx.core:core-ktx:+'
 //    implementation 'androidx.core:core-ktx:+'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation fileTree(include: ['*.jar'], dir: 'hl_bt_lib')
+//    implementation fileTree(include: ['*.jar'], dir: 'hl_bt_lib')
     implementation 'com.github.Piashsarker:AndroidAppUpdateLibrary:1.0.4'
 
 }

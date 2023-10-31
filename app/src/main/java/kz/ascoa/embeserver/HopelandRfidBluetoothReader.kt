@@ -58,15 +58,17 @@ class HopelandRfidBluetoothReader (val context: Context,
         isConnected = false
     }
 
-    override fun connectDevice(deviceName: String) : String {
+    override fun connectDevice(deviceName: String): String {
         try {
             readerDeviceName = deviceName
 
-            var connRes = CLReader.CreateBT4Conn(deviceName, this)
-            isConnected = connRes == true
+            if (isConnected) return ""
 
+            var connRes = CLReader.CreateBT4Conn(deviceName, this)
+            Thread.sleep(50)
+            isConnected = connRes == true
             if (connRes == false ) {
-                return "Cannot connect device $deviceName"
+                throw Exception("Cannot connect device")
             }
 
             CLReader._Config.SetReaderRestoreFactory(deviceName);
@@ -99,20 +101,20 @@ class HopelandRfidBluetoothReader (val context: Context,
 //            val toneGenerator: ToneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 99)
 //            toneGenerator.startTone(ToneGenerator.TONE_CDMA_CONFIRM, 750)
 
-            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 3000)
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
 
             // Thread.sleep(50)
-            if(readerDeviceName == "") readerDeviceName = "Hopeland RFID Handheld"
+            if(readerDeviceName == "") readerDeviceName = "Hopeland RFID BT"
             wsServer.sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${readerDeviceName}")
-            return ""
 
         } catch (e: Exception){
 //            Log.d("Error", "Connect to UHF device: " + e.stackTrace.toString())
 //            val errorMsg = "Error to connect to device: ${e.stackTrace.toString()}"
 //            Toast.makeText(context, "Error to connect to device: ${e.stackTrace.toString()}", Toast.LENGTH_SHORT).show()
             wsServer.sendErrorMessage("connectDevice", e.message, e.stackTraceToString())
-            return ""
+            return "Cannot connect"
         }
+        return ""
     }
 
     // @Synchronized
@@ -139,7 +141,8 @@ class HopelandRfidBluetoothReader (val context: Context,
     }
 
     override fun getAvailableDeviceNameList(): MutableList<String> {
-        return mutableListOf("")
+        var result = CLReader.GetBT4DeviceStrList()
+        return result
     }
 
     override fun getConnectedDeviceName(): String {
@@ -152,17 +155,26 @@ class HopelandRfidBluetoothReader (val context: Context,
     override fun setSignalPower(ratio: Float?) : Int {
         var lRatio = ratio?: 100f
         var value = (maxPowerValue * lRatio).roundToInt()
-        var i = 1
-        var result: Int = -1
-        connectDevice()
-        while(i <= readerAntCount) {
 
-            result = CLReader.SetPower(deviceName, )
-            if(result != 0)
-                break
+        var result = 0
+        var setPowerResult: String = "0"
+        connectDevice()
+
+        // Power params format: 1,50&2,50&3,50
+        // 1,2,3 - antenna numbers
+        // 50 - power value
+
+        // Set power for the first antenna
+        var params = "$currentAntNumber,$value"
+
+        var i = 2
+        while(i <= readerAntCount) {
+            params += "&$i,$value"
             i++
         }
-        disconnectDevice()
+        setPowerResult = CLReader.SetPower(deviceName, params)
+        if(!setPowerResult.startsWith("0")) result = -1
+
         return result
     }
 
@@ -222,6 +234,12 @@ class HopelandRfidBluetoothReader (val context: Context,
             CLReader.Stop(deviceName)
             // disconnectDevice()
         }
+    }
+
+    override fun reconnectDevice(deviceName: String): String {
+        CLReader.CloseConn(deviceName)
+        CLReader.CreateBT4Conn(deviceName, this)
+        return ""
     }
 
     override fun getTagDistance(): Int {
@@ -348,20 +366,16 @@ class HopelandRfidBluetoothReader (val context: Context,
         }
     }
 
-    fun getBTDeviceList(): List<String> {
-        return CLReader.GetBT4DeviceStrList()
-    }
-
     override fun WriteDebugMsg(p0: String?) {
-        TODO("Not yet implemented")
+        wsServer.sendErrorMessage("Write debug msg", p0, "")
     }
 
     override fun WriteLog(p0: String?) {
-        TODO("Not yet implemented")
+        wsServer.sendErrorMessage("Write log", p0, "")
     }
 
     override fun PortConnecting(p0: String?) {
-        TODO("Not yet implemented")
+        isConnected = true
     }
 
     override fun PortClosing(p0: String?) {

@@ -289,6 +289,10 @@ class ZebraRfidReader(val context: DriverService,
         }
     }
 
+    override fun reconnectDevice(deviceName: String): String {
+        TODO("Not yet implemented")
+    }
+
     override fun getTagDistance(): Int {
         TODO("Not yet implemented")
     }
