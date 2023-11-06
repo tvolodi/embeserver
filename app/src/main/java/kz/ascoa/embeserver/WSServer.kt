@@ -209,6 +209,8 @@ class WSServer(
         }
     }
 
+    // Group data by EPC code => take a reading with the most strong signal
+    // If reading of one tag then it takes the EPC with the most strong signal
     fun sendReadingResult(tagList: MutableList<RfTagData>) {
         try {
             // var resultTagList = reader?.getAndClearTagList()
