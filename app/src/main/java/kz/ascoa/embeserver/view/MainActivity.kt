@@ -122,8 +122,6 @@ class MainActivity : AppCompatActivity() {
             finishAndRemoveTask()
         }
 
-
-
         checkForNewVersion()
 
         // Start foreground service
@@ -242,8 +240,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateAction() {
 
-
-
         val requestInstallPackagePermission =
             ActivityCompat.checkSelfPermission(this, Manifest.permission.REQUEST_INSTALL_PACKAGES)
         if (requestInstallPackagePermission != PackageManager.PERMISSION_GRANTED) {
@@ -306,13 +302,20 @@ class MainActivity : AppCompatActivity() {
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
         val device_model = preferences.getString("device_model", "")
         if ( device_model == "pref_model_zebra_value") {
+            permissionArr += Manifest.permission.CAMERA
+            permissionArr += Manifest.permission.BLUETOOTH
             permissionArr += Manifest.permission.BLUETOOTH_CONNECT
             permissionArr += Manifest.permission.BLUETOOTH_SCAN
         }
 
+        permissionArr += Manifest.permission.CAMERA
+        permissionArr += Manifest.permission.BLUETOOTH
+        permissionArr += Manifest.permission.BLUETOOTH_CONNECT
+        permissionArr += Manifest.permission.BLUETOOTH_SCAN
+
         val statePermission =
             ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
-        if (statePermission != PackageManager.PERMISSION_GRANTED) {
+        // if (statePermission != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                 this,
 //                arrayOf<String>(
@@ -322,7 +325,7 @@ class MainActivity : AppCompatActivity() {
                 permissionArr,
                 REQUEST_READ_PHONE_STATE
             )
-        }
+        // }
     }
 
     private fun initView() {

@@ -136,6 +136,11 @@ class DriverService : Service() {
                     "pref_model_zebra_value" -> {
                         reader = ZebraRfidReader(this, toneGenerator, "Zebra", OperationTypes.INVENTORY,  mutableListOf<String>(), "")
                     }
+                    // getString(R.string.pref_model_hl_bt_value) -> {
+                    "pref_model_hl_bt_value" -> {
+                        reader = HopelandRfidBluetoothReader(this, toneGenerator, "Hopeland BT", OperationTypes.INVENTORY,  mutableListOf<String>(), "")
+                    }
+
                     "" -> {
                         Toast.makeText(this, "Device is not set in settings", Toast.LENGTH_LONG).show()
                         return START_NOT_STICKY

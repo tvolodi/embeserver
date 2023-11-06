@@ -2,11 +2,14 @@ package kz.ascoa.embeserver
 
 import android.content.Context
 import android.media.ToneGenerator
-import com.pda.rfid.EPCModel
-import com.pda.rfid.IAsynchronousMessage
-import com.pda.rfid.uhf.UHF
-import com.pda.rfid.uhf.UHFReader
-import com.port.Adapt
+import com.clou.uhf.G3Lib.CLReader
+import com.clou.uhf.G3Lib.CLReader.CloseConn
+import com.clou.uhf.G3Lib.CLReader.GetBT4DeviceStrList
+import com.clou.uhf.G3Lib.ClouInterface.IAsynchronousMessage
+import com.clou.uhf.G3Lib.Enumeration.eRF_Range
+import com.clou.uhf.G3Lib.Enumeration.eReadType
+import com.clou.uhf.G3Lib.Protocol.Tag_Model
+//import com.clou.uhf.G3Lib.ClouInterface.IAsynchronousMessage
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -16,7 +19,7 @@ import kotlin.Exception
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
-class HopelandRfidReader (val context: Context,
+class HopelandRfidBluetoothReader (val context: Context,
                           val toneGenerator: ToneGenerator,
                           override val deviceName: String,
                           override var operationType: String,
@@ -24,7 +27,7 @@ class HopelandRfidReader (val context: Context,
                           override var locatingEpc: String
 )  : IAsynchronousMessage, IReadDevice {
 
-    var readingMode: Int = 0;
+    var readingMode: Int = 0 // 0 - single, 1 - continuous
     var isConnected: Boolean = false
     override var isContinueReading: Boolean = false
 //    val deviceName = "Hopeland HY820"
@@ -32,8 +35,6 @@ class HopelandRfidReader (val context: Context,
     var minPowerValue: Int = -1
 
     var readerDeviceName: String = ""
-
-    var uhfReader: UHF? = null
 
     override lateinit var wsServer: WSServer
 
@@ -53,58 +54,71 @@ class HopelandRfidReader (val context: Context,
     }
 
     override fun disconnectDevice() {
-        // uhfReader?.CloseConnect()
-        UHFReader._Config.CloseConnect()
-        // UHFReader.
+        CLReader.CloseConn(deviceName)
         isConnected = false
     }
 
-    override fun connectDevice(deviceName: String) : String {
+    override fun connectDevice(deviceName: String): String {
         try {
-            readerDeviceName = deviceName
-            Adapt.init( context)
-            // Thread.sleep(50)
-            Adapt.enablePauseInBackGround(context)
-            // Thread.sleep(50)
-            uhfReader = UHFReader.getUHFInstance()
+            if(deviceName != "") readerDeviceName = deviceName
 
-            if(uhfReader == null)
-                return "Cannot connect to reader device"
+            if (isConnected) return ""
 
-            var res = uhfReader?.OpenConnect(false, this)
-            Thread.sleep(500)
-            uhfReader!!.SetFrequency("4")
-            // Thread.sleep(50)
+            var connRes = CLReader.CreateBT4Conn(readerDeviceName, this)
+            Thread.sleep(50)
+            isConnected = connRes == true
+            if (connRes == false ) {
+                throw Exception("Cannot connect device")
+            }
 
-            var propertyStr = uhfReader!!.GetReaderProperty()
-            var propertyList = propertyStr.split("|")
-            var hmPower = mapOf<Int, Int>(1 to 1, 2 to 3, 3 to 7, 4 to 15)
-            maxPowerValue = propertyList[1].toInt()
+            CLReader._Config.SetReaderRestoreFactory(readerDeviceName);
+            CLReader.SetBeep(readerDeviceName, 1);
+            CLReader._Config.SetReaderRF(readerDeviceName, eRF_Range.ETSI_866_to_868MHz);
+//            ChangeReaderSettingForSingleReading(true);
+
+            var propertyStr = CLReader.GetReaderProperty(readerDeviceName);
+            var propertyArr = propertyStr.split("|");
+            var hmPower = mapOf(1 to 1, 2 to 3, 3 to 7, 4 to 15)
+            maxPowerValue = propertyArr[1].toInt()
             minPowerValue = 0
-            readerAntCount = propertyList[2].toInt()
+            readerAntCount = propertyArr[2].toInt()
             currentAntNumber = hmPower[readerAntCount]!!
+//            var maxValue = propertyArr[1].toInt()
+//            var minValue = Math.Round(MaxValue * 0.1, MidpointRounding.AwayFromZero);
+//            _readerAntennasCount = int.Parse(propertyArr[2]);
+//            _currentAntennaNumber = hmPower[_readerAntennasCount];
+
+//            if(uhfReader == null)
+//                return "Cannot connect to reader device"
+//
+//            var res = uhfReader?.OpenConnect(false, this)
+//            Thread.sleep(500)
+//            uhfReader!!.SetFrequency("4")
+            // Thread.sleep(50)
+
+
 
 //            val toneGenerator: ToneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 99)
 //            toneGenerator.startTone(ToneGenerator.TONE_CDMA_CONFIRM, 750)
 
-            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 3000)
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
 
             // Thread.sleep(50)
-            if(readerDeviceName == "") readerDeviceName = "Hopeland RFID Handheld"
+//            if(readerDeviceName == "") readerDeviceName = "Hopeland RFID BT"
             wsServer.sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${readerDeviceName}")
-            return ""
 
         } catch (e: Exception){
 //            Log.d("Error", "Connect to UHF device: " + e.stackTrace.toString())
 //            val errorMsg = "Error to connect to device: ${e.stackTrace.toString()}"
 //            Toast.makeText(context, "Error to connect to device: ${e.stackTrace.toString()}", Toast.LENGTH_SHORT).show()
             wsServer.sendErrorMessage("connectDevice", e.message, e.stackTraceToString())
-            return ""
+            return "Cannot connect"
         }
+        return ""
     }
 
     // @Synchronized
-    override fun OutPutEPC(p0: EPCModel?) {
+    override fun OutPutTags(p0: Tag_Model?) {
         val epcStr = p0?._EPC
 //        if(operationType == OperationTypes.INVENTORY) {
 //            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
@@ -127,7 +141,8 @@ class HopelandRfidReader (val context: Context,
     }
 
     override fun getAvailableDeviceNameList(): MutableList<String> {
-        return mutableListOf("")
+        var result = CLReader.GetBT4DeviceStrList()
+        return result
     }
 
     override fun getConnectedDeviceName(): String {
@@ -140,17 +155,26 @@ class HopelandRfidReader (val context: Context,
     override fun setSignalPower(ratio: Float?) : Int {
         var lRatio = ratio?: 100f
         var value = (maxPowerValue * lRatio).roundToInt()
-        var i = 1
-        var result: Int = -1
-        connectDevice()
-        while(i <= readerAntCount) {
 
-            result = UHFReader._Config.SetANTPowerParam(i, value)
-            if(result != 0)
-                break
+        var result = 0
+        var setPowerResult: String = "0"
+        connectDevice()
+
+        // Power params format: 1,50&2,50&3,50
+        // 1,2,3 - antenna numbers
+        // 50 - power value
+
+        // Set power for the first antenna
+        var params = "$currentAntNumber,$value"
+
+        var i = 2
+        while(i <= readerAntCount) {
+            params += "&$i,$value"
             i++
         }
-        disconnectDevice()
+        setPowerResult = CLReader.SetPower(deviceName, params)
+        if(!setPowerResult.startsWith("0")) result = -1
+
         return result
     }
 
@@ -176,6 +200,9 @@ class HopelandRfidReader (val context: Context,
 
         readingMode = mode
 
+        var hlReadMode = eReadType.Inventory
+        if(mode == 0) hlReadMode = eReadType.Single
+
         operationType = OperationTypes.INVENTORY
         epcFilterList = epcFilter
 
@@ -187,7 +214,7 @@ class HopelandRfidReader (val context: Context,
                 return@launch
             }
 
-            var result = UHFReader._Tag6C.GetEPC(1, mode)
+            var result = CLReader._Tag6C.GetEPC(deviceName, 1, hlReadMode)
             while(isContinueReading){
                 try {
                     delay(50)
@@ -204,13 +231,15 @@ class HopelandRfidReader (val context: Context,
                     break
                 }
             }
-            disconnectDevice()
+            CLReader.Stop(deviceName)
+            // disconnectDevice()
         }
-
     }
 
     override fun reconnectDevice(deviceName: String): String {
-        TODO("Not yet implemented")
+        CLReader.CloseConn(deviceName)
+        CLReader.CreateBT4Conn(deviceName, this)
+        return ""
     }
 
     override fun getTagDistance(): Int {
@@ -246,7 +275,7 @@ class HopelandRfidReader (val context: Context,
                 return@launch
             }
 
-            var result = UHFReader._Tag6C.GetEPC_MatchEPC(1, readingMode, epcCode)
+            var result = CLReader._Tag6C.GetEPC_MatchEPC(deviceName, currentAntNumber, eReadType.Inventory, epcCode)
             while(isContinueReading){
                 try {
                     delay(100)
@@ -276,7 +305,8 @@ class HopelandRfidReader (val context: Context,
                     break
                 }
             }
-            disconnectDevice()
+            CLReader.Stop(deviceName)
+//            disconnectDevice()
             toneGeneratorRunnable.shutdown()
         }
     }
@@ -285,8 +315,6 @@ class HopelandRfidReader (val context: Context,
         val maxRssiItem = tagList.maxBy{
             it.rssi!!.toByte()
         }
-
-
     }
 
     private fun calcDistanceByTagRssi(rssi: Byte?) : Int {
@@ -336,6 +364,38 @@ class HopelandRfidReader (val context: Context,
             }
 
         }
+    }
+
+    override fun WriteDebugMsg(p0: String?) {
+        wsServer.sendErrorMessage("Write debug msg", p0, "")
+    }
+
+    override fun WriteLog(p0: String?) {
+        wsServer.sendErrorMessage("Write log", p0, "")
+    }
+
+    override fun PortConnecting(p0: String?) {
+        isConnected = true
+    }
+
+    override fun PortClosing(p0: String?) {
+        TODO("Not yet implemented")
+    }
+
+//    override fun OutPutTags(p0: Tag_Model?) {
+//        TODO("Not yet implemented")
+//    }
+
+    override fun OutPutTagsOver() {
+        TODO("Not yet implemented")
+    }
+
+    override fun GPIControlMsg(p0: Int, p1: Int, p2: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun OutPutScanData(p0: ByteArray?) {
+        TODO("Not yet implemented")
     }
 }
 

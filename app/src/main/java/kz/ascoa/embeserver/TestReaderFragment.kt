@@ -5,7 +5,11 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.preference.PreferenceManager
+import com.clou.uhf.G3Lib.CLReader
+import com.clou.uhf.G3Lib.ClouInterface.IAsynchronousMessage
+import com.clou.uhf.G3Lib.Protocol.Tag_Model
 import kz.ascoa.embeserver.databinding.FragmentTestReaderBinding
 import org.java_websocket.exceptions.WebsocketNotConnectedException
 import java.net.URI
@@ -16,7 +20,7 @@ import java.net.URISyntaxException
  * Use the [TestReaderFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
-class TestReaderFragment : Fragment() {
+class TestReaderFragment : Fragment(), IAsynchronousMessage {
 
     private var _uiBinding: FragmentTestReaderBinding? = null
 
@@ -77,6 +81,12 @@ class TestReaderFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        uiBinding.connectDevice.setOnClickListener {
+            val connResult = CLReader.CreateBT4Conn("HL7202K8-080011", this)
+            if(connResult) Toast.makeText(activity, "Device connected", Toast.LENGTH_SHORT)
+            else Toast.makeText(activity, "Device not connected", Toast.LENGTH_SHORT)
+        }
+
         uiBinding.readTag.setOnClickListener{
             val message = "${WSCommands.READ_TAG}${Dividers.FIELD_DIVIDER}"
             sendMessage(message)
@@ -126,5 +136,37 @@ class TestReaderFragment : Fragment() {
 
                 }
             }
+    }
+
+    override fun WriteDebugMsg(p0: String?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun WriteLog(p0: String?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun PortConnecting(p0: String?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun PortClosing(p0: String?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun OutPutTags(p0: Tag_Model?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun OutPutTagsOver() {
+        TODO("Not yet implemented")
+    }
+
+    override fun GPIControlMsg(p0: Int, p1: Int, p2: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun OutPutScanData(p0: ByteArray?) {
+        TODO("Not yet implemented")
     }
 }

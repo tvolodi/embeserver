@@ -1,6 +1,7 @@
 package kz.ascoa.embeserver.view
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,15 +13,15 @@ import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceDialogFragmentCompat
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
+import kz.ascoa.embeserver.DriverService
 import kz.ascoa.embeserver.R
+import kz.ascoa.embeserver.enums.ActionType
 import kz.ascoa.embeserver.showAlert
 
 class SettingsFragment : PreferenceFragmentCompat() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.root_preferences, rootKey)
-
-
     }
 
     override fun onCreateView(
@@ -33,9 +34,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
             activity?.let { PreferenceManager.getDefaultSharedPreferences(it) } // this.getPreferences(Context.MODE_PRIVATE)?: return
         val deviceTypeName = preferences?.getString("device_model", "")
 
-        var zebraDeviceCategoryPreference = findPreference<PreferenceCategory>("device_list_category")
-
-
+//        var zebraDeviceCategoryPreference = findPreference<PreferenceCategory>("device_list_category")
 //        if(deviceTypeName == "pref_model_zebra_value") zebraDeviceCategoryPreference?.isVisible = true
 
         var modelPreference: Preference? = findPreference<Preference>("device_model")
@@ -45,7 +44,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 Manifest.permission.BLUETOOTH_CONNECT,
                 Manifest.permission.BLUETOOTH_SCAN
             )
-            if(newValue == "pref_model_zebra_value"){
+            if(newValue == "pref_model_zebra_value" ||
+                newValue == "pref_model_hl_bt_value"){
                 val statePermission =
                     activity?.let { ActivityCompat.checkSelfPermission(it, Manifest.permission.BLUETOOTH_CONNECT) }
                 if (statePermission != PackageManager.PERMISSION_GRANTED) {
@@ -60,6 +60,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
 //                zebraDeviceCategoryPreference?.isVisible = true
 
                 // activity?.let { showAlert(it, "From reader change") }
+                var intent = Intent(activity, DriverService::class.java).also {
+                    it.action = ActionType.STOP.name
+                    activity?.startService(it)
+                }
             }
 
             true

@@ -16,6 +16,7 @@ interface IReadDevice {
     fun getTagDistance(): Int
     fun LocateTag(locatingEpc: String)
     fun readEPC(mode: Int, epcFilter: MutableList<String>, )
+    fun reconnectDevice(deviceName: String = ""): String
     fun rewriteTag(oldEpc: String, newEpc: String )
     fun setConnectedDevice(deviceName: String): String
     fun setOperationType(operationType: String, locatingEpc: String)
