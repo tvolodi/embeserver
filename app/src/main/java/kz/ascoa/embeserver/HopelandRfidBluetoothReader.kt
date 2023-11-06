@@ -60,23 +60,23 @@ class HopelandRfidBluetoothReader (val context: Context,
 
     override fun connectDevice(deviceName: String): String {
         try {
-            readerDeviceName = deviceName
+            if(deviceName != "") readerDeviceName = deviceName
 
             if (isConnected) return ""
 
-            var connRes = CLReader.CreateBT4Conn(deviceName, this)
+            var connRes = CLReader.CreateBT4Conn(readerDeviceName, this)
             Thread.sleep(50)
             isConnected = connRes == true
             if (connRes == false ) {
                 throw Exception("Cannot connect device")
             }
 
-            CLReader._Config.SetReaderRestoreFactory(deviceName);
-            CLReader.SetBeep(deviceName, 1);
-            CLReader._Config.SetReaderRF(deviceName, eRF_Range.ETSI_866_to_868MHz);
+            CLReader._Config.SetReaderRestoreFactory(readerDeviceName);
+            CLReader.SetBeep(readerDeviceName, 1);
+            CLReader._Config.SetReaderRF(readerDeviceName, eRF_Range.ETSI_866_to_868MHz);
 //            ChangeReaderSettingForSingleReading(true);
 
-            var propertyStr = CLReader.GetReaderProperty(deviceName);
+            var propertyStr = CLReader.GetReaderProperty(readerDeviceName);
             var propertyArr = propertyStr.split("|");
             var hmPower = mapOf(1 to 1, 2 to 3, 3 to 7, 4 to 15)
             maxPowerValue = propertyArr[1].toInt()
@@ -104,7 +104,7 @@ class HopelandRfidBluetoothReader (val context: Context,
             toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
 
             // Thread.sleep(50)
-            if(readerDeviceName == "") readerDeviceName = "Hopeland RFID BT"
+//            if(readerDeviceName == "") readerDeviceName = "Hopeland RFID BT"
             wsServer.sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${readerDeviceName}")
 
         } catch (e: Exception){
