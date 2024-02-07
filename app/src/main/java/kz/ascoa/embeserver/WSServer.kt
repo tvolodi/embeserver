@@ -36,11 +36,13 @@ class WSServer(
     }
 
     var wsConnection: WebSocket? = null
+
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
 
         wsConnection = conn
         clientHandshake = handshake
-        clientConnectionList += conn
+        var isConnRegistered = clientConnectionList.contains(conn);
+        if(!isConnRegistered) clientConnectionList += conn;
 
         toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 500)
     }
@@ -259,8 +261,8 @@ class WSServer(
             val tagList = epcDataList.joinToString( separator = VALUE_DIVIDER).toString()
             var message = "${Responses.GOT_EPC}${Dividers.FIELD_DIVIDER}${tagList}"
 
-            connections.forEach{
-                it.send(message)
+            clientConnectionList.forEach{
+                it?.send(message)
             }
 
         } catch (e: Exception) {
