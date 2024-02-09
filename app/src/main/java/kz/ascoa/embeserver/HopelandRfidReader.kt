@@ -31,7 +31,7 @@ class HopelandRfidReader (val context: Context,
     var maxPowerValue: Int = -1
     var minPowerValue: Int = -1
 
-    var readerDeviceName: String = ""
+    var readerDeviceName: String = "Hopeland HY820"
 
     var uhfReader: UHF? = null
 
@@ -127,7 +127,7 @@ class HopelandRfidReader (val context: Context,
     }
 
     override fun getAvailableDeviceNameList(): MutableList<String> {
-        return mutableListOf("")
+        return mutableListOf(readerDeviceName)
     }
 
     override fun getConnectedDeviceName(): String {
@@ -190,7 +190,7 @@ class HopelandRfidReader (val context: Context,
             var result = UHFReader._Tag6C.GetEPC(1, mode)
             while(isContinueReading){
                 try {
-                    delay(50)
+                    Thread.sleep(300)
 
                     listLock.lock()
                     val tagArray = tagList

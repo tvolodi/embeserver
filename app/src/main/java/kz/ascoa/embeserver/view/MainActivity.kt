@@ -77,8 +77,6 @@ class MainActivity : AppCompatActivity() {
         return true // stop propagate event further
     }
 
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)

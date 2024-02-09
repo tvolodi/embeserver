@@ -36,11 +36,13 @@ class WSServer(
     }
 
     var wsConnection: WebSocket? = null
+
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
 
         wsConnection = conn
         clientHandshake = handshake
-        clientConnectionList += conn
+        var isConnRegistered = clientConnectionList.contains(conn);
+        if(!isConnRegistered) clientConnectionList += conn;
 
         toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 500)
     }
@@ -209,6 +211,8 @@ class WSServer(
         }
     }
 
+    // Group data by EPC code => take a reading with the most strong signal
+    // If reading of one tag then it takes the EPC with the most strong signal
     fun sendReadingResult(tagList: MutableList<RfTagData>) {
         try {
             // var resultTagList = reader?.getAndClearTagList()
@@ -257,8 +261,8 @@ class WSServer(
             val tagList = epcDataList.joinToString( separator = VALUE_DIVIDER).toString()
             var message = "${Responses.GOT_EPC}${Dividers.FIELD_DIVIDER}${tagList}"
 
-            connections.forEach{
-                it.send(message)
+            clientConnectionList.forEach{
+                it?.send(message)
             }
 
         } catch (e: Exception) {
