@@ -2,6 +2,7 @@ package kz.ascoa.embeserver
 
 import android.content.Context
 import android.media.ToneGenerator
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kz.ascoa.embeserver.Dividers.FIELD_DIVIDER
@@ -12,31 +13,44 @@ import org.java_websocket.WebSocket
 import org.java_websocket.handshake.ClientHandshake
 import org.java_websocket.server.WebSocketServer
 import kotlin.Exception
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 
 class WSServer(
     socketAddress: InetSocketAddress,
     val context: Context,
-    val reader: IReadDevice?,
-    val toneGenerator: ToneGenerator,
-    val driverService: DriverService
+    private val reader: IReadDevice?,
+    private val toneGenerator: ToneGenerator,
+    private val driverService: DriverService
 ) : WebSocketServer(socketAddress,) {
 
-    var clientHandshake: ClientHandshake? = null
+    private val keepAliveExecutor = Executors.newScheduledThreadPool(1)
 
-    var clientConnectionList : MutableList<WebSocket?> = mutableListOf()
+    private var clientHandshake: ClientHandshake? = null
 
-    var isContinueReading = false
+    private var clientConnectionList : MutableList<WebSocket?> = mutableListOf()
 
-    var isOneTagRequired = false
+    private var isContinueReading = false
+
+    private var isOneTagRequired = false
 
     init{
         isReuseAddr = true;
         reader?.wsServer = this
+        startKeepAliveRoutine()
     }
 
-    var wsConnection: WebSocket? = null
-
+    private var wsConnection: WebSocket? = null
+    private fun startKeepAliveRoutine() {
+        keepAliveExecutor.scheduleAtFixedRate({
+            connections.forEach { ws ->
+                if (ws.isOpen) {
+                    ws.sendPing() // This is a method you would implement to send a WebSocket ping
+                }
+            }
+        }, 0, 30, TimeUnit.SECONDS) // Sends a ping every 30 seconds
+    }
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
 
         wsConnection = conn
@@ -47,19 +61,8 @@ class WSServer(
         toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 500)
     }
 
-//    fun got_epc(epc: String?){
-//        val message = "got_epc${FIELD_DIVIDER}${epc}"
-//        wsConnection?.send(message)
-//    }
-
-    fun got_epc_list(epcList: List<String>){
-
-        val message = "got_epc_list${FIELD_DIVIDER}${epcList.joinToString("$$")}"
-        wsConnection?.send(message)
-    }
-
     override fun onClose(conn: WebSocket?, code: Int, reason: String?, remote: Boolean) {
-        clientConnectionList -= conn
+//        clientConnectionList -= conn
         wsConnection = null
 
     }
@@ -69,263 +72,233 @@ class WSServer(
      * operation_name
      * continuous_read_tag
      */
+    @OptIn(DelicateCoroutinesApi::class)
     override fun onMessage(conn: WebSocket?, message: String?) {
 
-        var parsedMessageList = message?.split(FIELD_DIVIDER)
-        var operationName = parsedMessageList?.get(0)
-        var paramValues: MutableList<String> = mutableListOf()
+        val parsedMessageList = message?.split(FIELD_DIVIDER)
+        val operationName = parsedMessageList?.get(0)
+        val paramValues: MutableList<String> = mutableListOf()
         if(parsedMessageList?.count()!! >= 2) {
-            var operationParamString = parsedMessageList?.get(1)
-            if(operationParamString != null) {
-                paramValues.addAll(operationParamString.split(Dividers.VALUE_DIVIDER))
-            }
+            val operationParamString = parsedMessageList.get(1)
+            paramValues.addAll(operationParamString.split(Dividers.VALUE_DIVIDER))
         }
         wsConnection = conn
-        when (operationName) {
-            WSCommands.TEST -> conn?.send("Test passed")
+    when (operationName) {
+        WSCommands.TEST -> conn?.send("Test passed")
 
-            WSCommands.CONNECT_TO_DEVICE -> {
-                GlobalScope.launch {
-                    try{
-                        var deviceName = ""
-                        if(paramValues.count() > 0) {
-                            deviceName = paramValues[0]
-                        }
-                        reader?.connectDevice(deviceName)
-                    } catch (e: Exception){
-                        if(e.message == ""){
-
-                        }
-                        sendErrorMessage("WSServer.onMessage.CONNECT_TO_DEVICE", e.message, e.stackTraceToString())
+        WSCommands.CONNECT_TO_DEVICE -> {
+            GlobalScope.launch {
+                try{
+                    var deviceName = ""
+                    if(paramValues.isNotEmpty()) {
+                        deviceName = paramValues[0]
                     }
+                    reader?.connectDevice(deviceName)
+                } catch (e: Exception){
+                    sendErrorMessage("WSServer.onMessage.CONNECT_TO_DEVICE", e.message, e.stackTraceToString())
                 }
             }
+        }
 
-            WSCommands.DISCONNECT_DEVICE -> {
-                GlobalScope.launch {
-                    try{
-                        reader?.disconnectDevice()
-                        sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${""}")
-                    } catch (e: Exception) {
-                        sendErrorMessage("WSServer.onMessage.Disconnect_Device", e.message, e.stackTraceToString())
-                    }
-                }
-            }
-
-            WSCommands.DISCONNECT_WS -> {
-                conn?.close()
-            }
-
-            WSCommands.GET_AVAILABLE_DEVICE_NAME_LIST -> {
-                val deviceNameList = reader?.getAvailableDeviceNameList()
-                val nameListString = deviceNameList?.joinToString(Dividers.VALUE_DIVIDER)
-                conn?.send("${Responses.GOT_AVAILABLE_DEVICE_NAME_LIST}${Dividers.FIELD_DIVIDER}${nameListString}")
-            }
-
-            WSCommands.GET_CONNECTED_DEVICE_NAME -> {
-                try {
-                    val connectedDeviceName = reader?.getConnectedDeviceName()
-                    conn?.send("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${connectedDeviceName}")
+        WSCommands.DISCONNECT_DEVICE -> {
+            GlobalScope.launch {
+                try{
+                    reader?.disconnectDevice()
+                    sendMessage("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${""}")
                 } catch (e: Exception) {
-                    sendErrorMessage("WSServer.onMessage.GET_CONNECTED_DEVICE_NAME", e.message, e.stackTraceToString())
+                    sendErrorMessage("WSServer.onMessage.Disconnect_Device", e.message, e.stackTraceToString())
                 }
             }
+        }
 
-            WSCommands.GET_TAG_DISTANCE -> {
-                isContinueReading = true
-                reader?.isContinueReading = isContinueReading
-                while(isContinueReading) {
-                    var distance = reader?.getTagDistance()
-                    var message  = "got_tag_distance${FIELD_DIVIDER}${distance}"
-                    conn?.send(message)
-                }
+        WSCommands.DISCONNECT_WS -> {
+            isContinueReading = false
+            reader?.isContinueReading = isContinueReading
+            conn?.close()
+        }
+
+        WSCommands.GET_AVAILABLE_DEVICE_NAME_LIST -> {
+            val deviceNameList = reader?.getAvailableDeviceNameList()
+            val nameListString = deviceNameList?.joinToString(Dividers.VALUE_DIVIDER)
+            conn?.send("${Responses.GOT_AVAILABLE_DEVICE_NAME_LIST}${Dividers.FIELD_DIVIDER}${nameListString}")
+        }
+
+        WSCommands.GET_CONNECTED_DEVICE_NAME -> {
+            try {
+                val connectedDeviceName = reader?.getConnectedDeviceName()
+                conn?.send("${Responses.GOT_CONNECTED_DEVICE_NAME}${Dividers.FIELD_DIVIDER}${connectedDeviceName}")
+            } catch (e: Exception) {
+                sendErrorMessage("WSServer.onMessage.GET_CONNECTED_DEVICE_NAME", e.message, e.stackTraceToString())
             }
+        }
 
-            WSCommands.LOCATE_TAG -> {
-                val tagEpc = paramValues?.get(0)
-                if(tagEpc == "undefined"){
-                    sendErrorMessage("WSCommand.LOCATE_TAG", "undefined EPC for location", "")
-                    return
-                }
-                isContinueReading = true
-                reader?.isContinueReading = true
+        WSCommands.GET_TAG_DISTANCE -> {
+            isContinueReading = true
+            reader?.isContinueReading = isContinueReading
+            while(isContinueReading) {
+                val distance = reader?.getTagDistance()
+                val message  = "got_tag_distance${FIELD_DIVIDER}${distance}"
+                conn?.send(message)
+            }
+        }
+
+        WSCommands.LOCATE_TAG -> {
+            val tagEpc = paramValues[0]
+            if(tagEpc == "undefined"){
+                sendErrorMessage("WSCommand.LOCATE_TAG", "undefined EPC for location", "")
+                return
+            }
+            isContinueReading = true
+            reader?.isContinueReading = true
+            try {
+                reader?.LocateTag(paramValues[0] ?: "")
+            } catch (e:Exception) {
+                conn?.send(e.message)
+            }
+        }
+
+        WSCommands.READ_TAG -> {
+            isOneTagRequired = true
+            isContinueReading = true
+            reader?.isContinueReading = isContinueReading
+            GlobalScope.launch {
                 try {
-                    reader?.LocateTag(paramValues?.get(0) ?: "")
-                } catch (e:Exception) {
-                    conn?.send(e.message)
+                    reader?.readEPC(0, paramValues)
+                } catch (e: Exception) {
+                    sendErrorMessage("Read_Tag", e.message, e.stackTraceToString())
                 }
             }
+        }
 
-            WSCommands.READ_TAG -> {
-                isOneTagRequired = true
-                isContinueReading = true
-                reader?.isContinueReading = isContinueReading
-                GlobalScope.launch {
-                    try {
-                        reader?.readEPC(0, paramValues)
-                    } catch (e: Exception) {
-                        sendErrorMessage("Read_Tag", e.message, e.stackTraceToString())
-                    }
+        WSCommands.READ_TAG_CONTINUOUS -> {
+            val paramList = parsedMessageList[1].split(Dividers.VALUE_DIVIDER)
+            val power = paramList[0]
+            reader?.setSignalPower(power.toFloat())
+            Thread.sleep(125)
+
+            isContinueReading = true
+            isOneTagRequired = false
+            reader?.isContinueReading = isContinueReading
+            GlobalScope.launch {
+                reader?.readEPC(1, paramValues)
+            }
+        }
+
+        WSCommands.SET_OPERATION_TYPE -> {
+            var paramList = parsedMessageList[1].split(Dividers.VALUE_DIVIDER)
+            val operationType = paramList[0]
+            val epcFilterList: MutableList<String> = mutableListOf()
+            if(paramList.count() >= 2 ) {
+                val epics = paramList[1]
+                val epcList = epics.split(Dividers.SUBVALUE_DIVIDER)
+                epcList.forEach {
+                    epcFilterList += it
                 }
             }
+            reader?.setOperationType(operationType, epcFilterList[0])
+        }
 
-            WSCommands.READ_TAG_CONTINUOUS -> {
-                isContinueReading = true
-                isOneTagRequired = false
-                reader?.isContinueReading = isContinueReading
-                GlobalScope.launch {
-                    reader?.readEPC(1, paramValues)
-                }
-            }
-
-            WSCommands.SET_OPERATION_TYPE -> {
-                var paramList = parsedMessageList?.get(1)?.split(Dividers.VALUE_DIVIDER)
-                val operationType = paramList?.get(0)
-                val epcFilterList: MutableList<String> = mutableListOf()
-                if(paramList?.count()!! >= 2 ) {
-                    val epcs = paramList?.get(1)
-                    val epcList = epcs?.split(Dividers.SUBVALUE_DIVIDER)
-                    epcList?.forEach {
-                        epcFilterList += it
-                    }
-                }
-                if (operationType != null) {
-                    reader?.setOperationType(operationType, epcFilterList[0])
-                }
-            }
-
-            WSCommands.SET_POWER -> {
-                var ratio = parsedMessageList?.get(1)?.toFloat()
+        WSCommands.SET_POWER -> {
+            try{
+                val ratio = parsedMessageList[1].toFloat()
                 val result = reader?.setSignalPower(ratio)
                 if(result != 0) {
-                    conn?.send("Error to set antenna power. Code = ${result}")
-                }
+                    conn?.send("Error to set antenna power. Code = $result")
+                }}
+            catch (e: Exception){
+                sendErrorMessage("WSServer.onMessage.SET_POWER", e.message, e.stackTraceToString())
             }
-
-            WSCommands.STOP_READING -> {
-                isContinueReading = false
-                reader?.isContinueReading = isContinueReading
-            }
-
-            else -> conn?.send("${message} was re-sent")
         }
+
+        WSCommands.STOP_READING -> {
+            isContinueReading = false
+            reader?.isContinueReading = isContinueReading
+        }
+
+        else -> conn?.send("$message was re-sent")
     }
+}
 
-    // Group data by EPC code => take a reading with the most strong signal
-    // If reading of one tag then it takes the EPC with the most strong signal
-    fun sendReadingResult(tagList: MutableList<RfTagData>) {
-        try {
-            // var resultTagList = reader?.getAndClearTagList()
-            var result: String = ""
+// Group data by EPC code => take a reading with the most strong signal
+// If reading of one tag then it takes the EPC with the most strong signal
+fun sendReadingResult(tagList: MutableList<RfTagData>) {
+    try {
+        // var resultTagList = reader?.getAndClearTagList()
 
-            var grouppedResultsMap: MutableMap<String, RfTagData> = mutableMapOf()
+        val groupedResultsMap: MutableMap<String, RfTagData> = mutableMapOf()
 
-            var tagWithMaxValue: RfTagData = RfTagData("", -128, 0)
+        var tagWithMaxValue: RfTagData = RfTagData("", -128, 0)
 
-            tagList.forEach {
-                var epc = it.epc
-                if(epc == null) epc = ""
-                if(grouppedResultsMap.containsKey(epc)){
-                    val rfTagData = grouppedResultsMap[epc]
-                    if(rfTagData?.rssi!! < it.rssi!!) {
-                        rfTagData.rssi = it.rssi
-                        tagWithMaxValue = rfTagData
-                    }
-
-                    if(rfTagData?.relativeDistance!! < it.relativeDistance!!) rfTagData.relativeDistance = it.relativeDistance
-
-                } else {
-                    val rfTagData = RfTagData(epc, it.rssi, it.relativeDistance)
-                    grouppedResultsMap[epc] = rfTagData
+        tagList.forEach {
+            var epc = it.epc
+            if(epc == null) epc = ""
+            if(groupedResultsMap.containsKey(epc)){
+                val rfTagData = groupedResultsMap[epc]
+                if(rfTagData?.rssi!! < it.rssi!!) {
+                    rfTagData.rssi = it.rssi
+                    tagWithMaxValue = rfTagData
                 }
-                val compResult = tagWithMaxValue.rssi!!.compareTo(it.rssi!!)
-                if(compResult < 0) {
-                    tagWithMaxValue = it
-                }
+
+                if(rfTagData.relativeDistance!! < it.relativeDistance!!) rfTagData.relativeDistance = it.relativeDistance
+
+            } else {
+                val rfTagData = RfTagData(epc, it.rssi, it.relativeDistance)
+                groupedResultsMap[epc] = rfTagData
             }
+            val compResult = tagWithMaxValue.rssi!!.compareTo(it.rssi!!)
+            if(compResult < 0) {
+                tagWithMaxValue = it
+            }
+        }
 
-            var epcList: List<RfTagData>
-            if(!isOneTagRequired){
-                epcList = grouppedResultsMap.values.toList()
-            } else epcList = mutableListOf(tagWithMaxValue)
+        val epcList: List<RfTagData> = if(!isOneTagRequired){
+            groupedResultsMap.values.toList()
+        } else mutableListOf(tagWithMaxValue)
 
         //        val epcList = tagList.groupBy { it?.epc }?.mapValues { item -> item.value.map{it?.rssi}.toSet() }
-            var epcDataList: List<String> = mutableListOf()
-            epcList?.forEach { item ->
-                val epc = item.epc
-                val maxRssi = item.rssi
-                val relatedDistance = item.relativeDistance
-                val epcDataString = "${epc}${Dividers.SUBVALUE_DIVIDER}${maxRssi}${Dividers.SUBVALUE_DIVIDER}${relatedDistance}"
-                epcDataList += epcDataString
-            }
-            val tagList = epcDataList.joinToString( separator = VALUE_DIVIDER).toString()
-            var message = "${Responses.GOT_EPC}${Dividers.FIELD_DIVIDER}${tagList}"
-
-            clientConnectionList.forEach{
-                it?.send(message)
-            }
-
-        } catch (e: Exception) {
-            sendErrorMessage("sendReadingResult", e.message, e.stackTraceToString())
+        var epcDataList: List<String> = mutableListOf()
+        epcList.forEach { item ->
+            val epc = item.epc
+            val maxRssi = item.rssi
+            val relatedDistance = item.relativeDistance
+            val epcDataString = "${epc}${Dividers.SUBVALUE_DIVIDER}${maxRssi}${Dividers.SUBVALUE_DIVIDER}${relatedDistance}"
+            epcDataList += epcDataString
         }
-    }
+        val tagList = epcDataList.joinToString( separator = VALUE_DIVIDER).toString()
+        val message = "${Responses.GOT_EPC}${Dividers.FIELD_DIVIDER}${tagList}"
 
-    fun sendErrorMessage(location: String?, errMessage: String?, stackTrace: String?){
-        val errorContent = "${location}${Dividers.VALUE_DIVIDER}${errMessage}${Dividers.VALUE_DIVIDER}${stackTrace}"
-        val message = "${Responses.ERROR}${Dividers.FIELD_DIVIDER}${errorContent}"
+
+        sendMessage(message)
+//            clientConnectionList.forEach{
+//                it?.send(message)
+//            }
+
+    } catch (e: Exception) {
+        sendErrorMessage("sendReadingResult", e.message, e.stackTraceToString())
+    }
+}
+
+fun sendErrorMessage(location: String?, errMessage: String?, stackTrace: String?){
+    val errorContent = "${location}${Dividers.VALUE_DIVIDER}${errMessage}${Dividers.VALUE_DIVIDER}${stackTrace}"
+    val message = "${Responses.ERROR}${Dividers.FIELD_DIVIDER}${errorContent}"
+    connections.forEach {
+        it.send(message)
+    }
+}
+
+fun sendMessage(message: String?){
         connections.forEach {
             it.send(message)
         }
     }
 
-    fun sendMessage(message: String?){
-        connections.forEach {
-            it.send(message)
-        }
-
-    }
-
-//    private fun readTagsUntilCancel(conn: WebSocket?, ){
-//        GlobalScope.launch {
-//            while(isContinueReading){
-//                val tagList = getAndProcessTags(1)
-//                var message = "${Responses.GOT_EPC}${Dividers.FIELD_DIVIDER}${tagList}"
-//                conn?.send(message)
-//                delay(50)
-//            }
-//            reader?.deviceDisconnect()
-//        }
-//    }
-
-    /*
-    Params:
-    mode: 0 - single tag with the strongest signal (by RSSI)
-    mode: 1 - continuous - get all read tags
-     */
-//    private fun getAndProcessTags(mode: Int): String {
-//        var resultTagList = reader?.getAndClearTagList()
-//        var result: String = ""
-//        if(mode == 0) {
-//            var maxRssiItem = resultTagList?.maxByOrNull { it?.rssi!! }
-//            result = "${maxRssiItem?.epc}${Dividers.SUBVALUE_DIVIDER}${maxRssiItem?.rssi}" // E2000..234;-31
-//        } else {
-//            val epcList = resultTagList?.groupBy { it?.epc }?.mapValues { item -> item.value.map{it?.rssi}.toSet() }
-//            var epcDataList: List<String> = mutableListOf()
-//            epcList?.forEach { item ->
-//                val epc = item.key
-//                val maxRssi = item.value.maxByOrNull { it?.toByte() ?: 0 }
-//                val epcDataString = "${epc}${Dividers.SUBVALUE_DIVIDER}${maxRssi}"
-//                epcDataList += epcDataString
-//            }
-//            result = epcDataList.joinToString( separator = VALUE_DIVIDER).toString()
-//        }
-//
-//        return result
-//    }
 
     override fun onError(conn: WebSocket?, ex: Exception?) {
 
-        if(ex?.message == "Address already in use") return
+        if(ex?.message == "Address already in use") {
+            driverService.showToastMessage("Error: WSServer ${ex.message}")
+            return
+        }
         // Some actions
         connections.forEach {
             it.send(ex?.message)
@@ -338,17 +311,6 @@ class WSServer(
 
     }
 
-    fun toneFrequencyFromDistance () {
-        //        var i = 1L
-//        while(i < 20){
-//
-//            var j = (500 / i)
-//
-//            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, j.toInt())
-//            Thread.sleep(j)
-//            i++
-//        }
-    }
 }
 
 object WSCommands {
