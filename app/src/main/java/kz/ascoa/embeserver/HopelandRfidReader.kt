@@ -139,7 +139,7 @@ class HopelandRfidReader (val context: Context,
      */
     override fun setSignalPower(ratio: Float?) : Int {
         var lRatio = ratio?: 100f
-        var value = (maxPowerValue * lRatio).roundToInt()
+        var value = lRatio.roundToInt()
         var i = 1
         var result: Int = -1
         connectDevice()

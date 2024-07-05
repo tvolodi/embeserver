@@ -3,6 +3,7 @@ package kz.ascoa.embeserver.view
 // import org.java_websocket.drafts.Draft_10;
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
@@ -13,6 +14,7 @@ import android.os.Bundle
 import android.util.Patterns
 import android.view.KeyEvent
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -43,19 +45,15 @@ class MainActivity : AppCompatActivity() {
     private var clickTwoTime: Long = 0L
 
     private val REQUEST_READ_PHONE_STATE = 1
-    private val REQUEST_WRITE_EXTERNAL_STORAGE = 1
-    private val REQUEST_INSTALL_PACKAGES = 1
     private val REQUEST_REQUEST_INSTALL_PACKAGES = 1
 
 
 //    private lateinit var appBarConfiguration: AppBarConfiguration
-    lateinit var mainActivity: ActivityMainBinding
+    private lateinit var mainActivity: ActivityMainBinding
 
-    private var mWebSocketClient: WebSocketClient? = null
+    //    private var testWebSocketClient: WSClient = WSClient(URI("ws://127.0.0.1:38301/"), this)
 
-//    private var testWebSocketClient: WSClient = WSClient(URI("ws://127.0.0.1:38301/"), this)
-
-    val activityContext = this
+    private val activityContext = this
 
 //    lateinit var hopelandRfidReader: HopelandRfidReader
 
@@ -77,9 +75,11 @@ class MainActivity : AppCompatActivity() {
         return true // stop propagate event further
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         mainActivity = ActivityMainBinding.inflate(layoutInflater)
         setContentView(mainActivity.root)
@@ -92,11 +92,11 @@ class MainActivity : AppCompatActivity() {
 
         checkPermission()
 
-        mainActivity.startDriverBtn.setOnClickListener { view ->
+        mainActivity.startDriverBtn.setOnClickListener {
             doDriverAction(ActionType.START)
         }
 
-        mainActivity.stopDriverBtn.setOnClickListener { view ->
+        mainActivity.stopDriverBtn.setOnClickListener {
             doDriverAction(ActionType.STOP)
         }
 
@@ -104,19 +104,19 @@ class MainActivity : AppCompatActivity() {
             moveTaskToBack(true)
         }
 
-        mainActivity.updateBtn.setOnClickListener { view ->
+        mainActivity.updateBtn.setOnClickListener {
             updateAction()
         }
 
-        mainActivity.settingsButton.setOnClickListener { view ->
+        mainActivity.settingsButton.setOnClickListener {
             settingsAction()
         }
 
-        mainActivity.testReaderButton.setOnClickListener { view ->
+        mainActivity.testReaderButton.setOnClickListener {
             testReaderAction()
         }
 
-        mainActivity.exitButton.setOnClickListener { view ->
+        mainActivity.exitButton.setOnClickListener {
             finishAndRemoveTask()
         }
 
@@ -146,6 +146,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun checkForNewVersion() {
         val preferences = PreferenceManager.getDefaultSharedPreferences(this) // this.getPreferences(Context.MODE_PRIVATE)?: return
         val url = preferences.getString("update_app_url", "")
@@ -153,7 +154,7 @@ class MainActivity : AppCompatActivity() {
             showAlert("Update URL setting is empty")
             return
         }
-        val appInfoUrl = url + "/embeserver.info.json"
+        val appInfoUrl = "$url/embeserver.info.json"
         var appVersionOnServer = ""
         lifecycleScope.launch {
             HttpClient().use {
@@ -204,7 +205,6 @@ class MainActivity : AppCompatActivity() {
 
                     runOnUiThread{
                         showAlert(e.message)
-                        // Toast.makeText(activityContext, "Error on app version check: ${e.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
@@ -223,16 +223,6 @@ class MainActivity : AppCompatActivity() {
             supportFragmentManager.commit {
                 remove(fragment)
             }
-        }
-    }
-
-    private fun validateDownloadUrl() {
-        val preferences = this.getPreferences(Context.MODE_PRIVATE)?: return
-        val url = preferences.getString("update_app_url", "")
-        val appApkUrl = url + "/embeserver.apk"
-        val validationResult = Patterns.WEB_URL.matcher(appApkUrl).matches()
-        if (validationResult == false) {
-            showAlert("Set correct download url")
         }
     }
 
@@ -290,6 +280,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private fun checkPermission() {
 
         var permissionArr = arrayOf<String>(
@@ -313,20 +304,11 @@ class MainActivity : AppCompatActivity() {
 
         val statePermission =
             ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
-        // if (statePermission != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                 this,
-//                arrayOf<String>(
-//                    Manifest.permission.READ_PHONE_STATE,
-//                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-//                ),
                 permissionArr,
                 REQUEST_READ_PHONE_STATE
             )
-        // }
-    }
-
-    private fun initView() {
     }
 
     private fun doDriverAction(action: ActionType) {
