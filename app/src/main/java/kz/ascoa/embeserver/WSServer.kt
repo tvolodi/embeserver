@@ -2,6 +2,7 @@ package kz.ascoa.embeserver
 
 import android.content.Context
 import android.media.ToneGenerator
+import android.util.Log
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -12,6 +13,7 @@ import java.net.InetSocketAddress
 import org.java_websocket.WebSocket
 import org.java_websocket.handshake.ClientHandshake
 import org.java_websocket.server.WebSocketServer
+import java.time.LocalDateTime
 import kotlin.Exception
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -41,6 +43,9 @@ class WSServer(
         startKeepAliveRoutine()
     }
 
+    private val logTag = "Websocket server"
+    private var isLoggingOn = true
+
     private var wsConnection: WebSocket? = null
     private fun startKeepAliveRoutine() {
         keepAliveExecutor.scheduleAtFixedRate({
@@ -53,16 +58,26 @@ class WSServer(
     }
     override fun onOpen(conn: WebSocket?, handshake: ClientHandshake?) {
 
+        if (isLoggingOn)
+            Log.i(logTag, "Websocket connection start open")
+
         wsConnection = conn
         clientHandshake = handshake
         var isConnRegistered = clientConnectionList.contains(conn);
         if(!isConnRegistered) clientConnectionList += conn;
 
         toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 500)
+
+        if(isLoggingOn)
+            Log.i(logTag, "Websocket connection finish open")
     }
 
     override fun onClose(conn: WebSocket?, code: Int, reason: String?, remote: Boolean) {
 //        clientConnectionList -= conn
+
+        if(isLoggingOn)
+            Log.i("Websocket server", "Websocket connection on close")
+
         wsConnection = null
 
     }
@@ -74,6 +89,9 @@ class WSServer(
      */
     @OptIn(DelicateCoroutinesApi::class)
     override fun onMessage(conn: WebSocket?, message: String?) {
+
+        if(isLoggingOn)
+            Log.i(logTag, "Start message processing $message")
 
         val parsedMessageList = message?.split(FIELD_DIVIDER)
         val operationName = parsedMessageList?.get(0)
@@ -163,8 +181,19 @@ class WSServer(
             reader?.isContinueReading = isContinueReading
             GlobalScope.launch {
                 try {
+
+                    if(isLoggingOn) {
+                        val currentDateTime = LocalDateTime.now().toString()
+                        Log.i(
+                            logTag,
+                            "Call reader with parameters $paramValues $currentDateTime")
+                    }
+
                     reader?.readEPC(0, paramValues)
                 } catch (e: Exception) {
+
+                    Log.e(logTag, "Error to read tag ${e.stackTraceToString()} ")
+
                     sendErrorMessage("Read_Tag", e.message, e.stackTraceToString())
                 }
             }
@@ -225,6 +254,14 @@ fun sendReadingResult(tagList: MutableList<RfTagData>) {
     try {
         // var resultTagList = reader?.getAndClearTagList()
 
+        if(isLoggingOn) {
+            val currentDateTime = LocalDateTime.now().toString()
+            val tagListString = tagList.joinToString(){
+                "${it.epc} ${it.rssi} \n"
+            }
+            Log.i(logTag, "Start send tag to client $tagListString \n $currentDateTime")
+        }
+
         val groupedResultsMap: MutableMap<String, RfTagData> = mutableMapOf()
 
         var tagWithMaxValue: RfTagData = RfTagData("", -128, 0)
@@ -267,6 +304,8 @@ fun sendReadingResult(tagList: MutableList<RfTagData>) {
         val tagList = epcDataList.joinToString( separator = VALUE_DIVIDER).toString()
         val message = "${Responses.GOT_EPC}${Dividers.FIELD_DIVIDER}${tagList}"
 
+        if(isLoggingOn)
+            Log.i(logTag, "Result message before sent $message")
 
         sendMessage(message)
 //            clientConnectionList.forEach{

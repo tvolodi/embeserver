@@ -228,7 +228,7 @@
                 // alert(`receivedMsg ${receivedMsg}`)
 
                 const msgInfoElement = document.getElementById("msg_info")
-                msgInfoElement.innerHTML = receivedMsg
+                msgInfoElement.innerHTML = msgInfoElement.innerHTML + "\n" + receivedMsg + "\n" + new Date().toLocaleString();
 
                 let epcDataElement = document.getElementById("epc_data");
 
@@ -341,8 +341,10 @@
         }
 
         function readTag () {
-            clearMessageInfo();
+            // clearMessageInfo();
             ws.send("read_tag")
+            const msgInfoElement = document.getElementById("msg_info")
+            msgInfoElement.innerHTML = msgInfoElement.innerHTML + "\n" + receivedMsg + "\n" + new Date().toLocaleString();
         }
 
         function readTags () {
